@@ -24,7 +24,11 @@ import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.exoplayer.video.MediaCodecVideoRenderer
 import androidx.media3.exoplayer.video.VideoRendererEventListener
 import androidx.media3.extractor.DefaultExtractorsFactory
+import androidx.media3.exoplayer.analytics.AnalyticsListener
+import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.extractor.ExtractorsFactory
+import androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory
+import androidx.media3.extractor.ts.TsExtractor
 import androidx.media3.session.MediaSession
 import com.github.damontecres.wholphin.mpv.MpvPlayer
 import com.github.damontecres.wholphin.preferences.AppPreferences
@@ -161,14 +165,12 @@ class PlayerFactory
                                     extractorsFactory.forDolbyVision(),
                                 )
                             }
-                        val disableAudioOffload =
-                            appPreferences.experimentalPreferences.get { disableAudioOffload } ?: false
-                        val tunneling =
-                            appPreferences.experimentalPreferences.get { videoTunnelingEnabled }
+                        // Like Just Player: never offload audio nor tunnel video, regardless of the
+                        // experimental preferences, to keep passthrough (Atmos/DTS) stable
                         val trackSelector =
                             createTrackSelector(
-                                tunneling = tunneling,
-                                disableAudioOffload = disableAudioOffload,
+                                tunneling = false,
+                                disableAudioOffload = true,
                             )
 
                         ExoPlayer
@@ -178,6 +180,7 @@ class PlayerFactory
                             .setTrackSelector(trackSelector)
                             .build()
                             .apply {
+                                addAnalyticsListener(AudioDiagnosticsListener)
                                 assHandler?.init(this)
                                 withContext(WholphinDispatchers.Main) {
                                     setAudioAttributes(
@@ -240,10 +243,13 @@ class PlayerFactory
                 }
         }
 
+        // TS settings as in Just Player (https://github.com/google/ExoPlayer/issues/8571)
         private fun createExtractorsFactory() =
             DefaultExtractorsFactory()
                 .setConstantBitrateSeekingEnabled(true)
                 .setConstantBitrateSeekingAlwaysEnabled(true)
+                .setTsExtractorFlags(DefaultTsPayloadReaderFactory.FLAG_ENABLE_HDMV_DTS_AUDIO_STREAMS)
+                .setTsExtractorTimestampSearchBytes(1500 * TsExtractor.TS_PACKET_SIZE)
 
         private fun createTrackSelector(
             tunneling: Boolean? = null,
@@ -257,6 +263,7 @@ class PlayerFactory
                 }
             setParameters(
                 buildUponParameters()
+                    .setAllowInvalidateSelectionsOnRendererCapabilitiesChange(true)
                     .apply {
                         tunneling?.let { setTunnelingEnabled(tunneling) }
                     }.setAudioOffloadPreferences(
@@ -292,6 +299,70 @@ object TrustAllControllersCallback : MediaSession.Callback {
                 .setAvailablePlayerCommands(MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS)
                 .build(),
         )
+}
+
+/**
+ * Logs audio output events (format, track init, underruns, errors) to help diagnose passthrough glitches
+ */
+@OptIn(UnstableApi::class)
+object AudioDiagnosticsListener : AnalyticsListener {
+    override fun onAudioInputFormatChanged(
+        eventTime: AnalyticsListener.EventTime,
+        format: androidx.media3.common.Format,
+        decoderReuseEvaluation: androidx.media3.exoplayer.DecoderReuseEvaluation?,
+    ) {
+        Timber.i(
+            "Audio: input format mime=%s codecs=%s channels=%d rate=%d bitrate=%d",
+            format.sampleMimeType,
+            format.codecs,
+            format.channelCount,
+            format.sampleRate,
+            format.bitrate,
+        )
+    }
+
+    override fun onAudioTrackInitialized(
+        eventTime: AnalyticsListener.EventTime,
+        audioTrackConfig: AudioSink.AudioTrackConfig,
+    ) {
+        Timber.i(
+            "Audio: track initialized encoding=%d channelConfig=%d rate=%d tunneling=%s offload=%s",
+            audioTrackConfig.encoding,
+            audioTrackConfig.channelConfig,
+            audioTrackConfig.sampleRate,
+            audioTrackConfig.tunneling,
+            audioTrackConfig.offload,
+        )
+    }
+
+    override fun onAudioUnderrun(
+        eventTime: AnalyticsListener.EventTime,
+        bufferSize: Int,
+        bufferSizeMs: Long,
+        elapsedSinceLastFeedMs: Long,
+    ) {
+        Timber.w(
+            "Audio: underrun bufferSize=%d bufferSizeMs=%d sinceLastFeedMs=%d position=%d",
+            bufferSize,
+            bufferSizeMs,
+            elapsedSinceLastFeedMs,
+            eventTime.currentPlaybackPositionMs,
+        )
+    }
+
+    override fun onAudioSinkError(
+        eventTime: AnalyticsListener.EventTime,
+        audioSinkError: Exception,
+    ) {
+        Timber.e(audioSinkError, "Audio: sink error")
+    }
+
+    override fun onAudioCodecError(
+        eventTime: AnalyticsListener.EventTime,
+        audioCodecError: Exception,
+    ) {
+        Timber.e(audioCodecError, "Audio: codec error")
+    }
 }
 
 val Player.isReleased: Boolean
