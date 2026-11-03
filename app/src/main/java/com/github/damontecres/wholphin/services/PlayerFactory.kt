@@ -15,6 +15,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
 import androidx.media3.exoplayer.DefaultRenderersFactory
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.Renderer
 import androidx.media3.exoplayer.RenderersFactory
@@ -178,6 +179,7 @@ class PlayerFactory
                             .setMediaSourceFactory(mediaSourceFactory)
                             .setRenderersFactory(renderersFactory)
                             .setTrackSelector(trackSelector)
+                            .setLoadControl(lanLoadControl())
                             .build()
                             .apply {
                                 addAnalyticsListener(AudioDiagnosticsListener)
@@ -202,6 +204,18 @@ class PlayerFactory
             currentPlayer = newPlayer
             return PlayerCreation(newPlayer, assHandler)
         }
+
+        /**
+         * Larger read-ahead than the defaults for big remuxes on the local network, but capped in bytes
+         * so the 32-bit Shield heap is never at risk
+         */
+        private fun lanLoadControl(): DefaultLoadControl =
+            DefaultLoadControl
+                .Builder()
+                .setBufferDurationsMs(30_000, 60_000, 2_000, 5_000)
+                .setTargetBufferBytes(40 * 1024 * 1024)
+                .setPrioritizeTimeOverSizeThresholds(false)
+                .build()
 
         fun createAudioPlayer(
             disableAudioOffload: Boolean,

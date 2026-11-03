@@ -1,0 +1,3 @@
+# Precompile the app's own code at install time for a faster cold start (Compose/Media3 ship their own profiles)
+HSPLcom/github/damontecres/wholphin/**->**(**)**
+Lcom/github/damontecres/wholphin/**;
