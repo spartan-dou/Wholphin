@@ -7,6 +7,9 @@ import android.os.Build
 import android.os.Handler
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionParameters.AudioOffloadPreferences
@@ -316,6 +319,14 @@ object TrustAllControllersCallback : MediaSession.Callback {
 }
 
 /**
+ * What the audio sink is really doing, shown in the player overlay
+ */
+object AudioOutputState {
+    /** True when the compressed audio is sent as is to the receiver, false when it is decoded to PCM */
+    var passthrough by mutableStateOf<Boolean?>(null)
+}
+
+/**
  * Logs audio output events (format, track init, underruns, errors) to help diagnose passthrough glitches
  */
 @OptIn(UnstableApi::class)
@@ -339,6 +350,16 @@ object AudioDiagnosticsListener : AnalyticsListener {
         eventTime: AnalyticsListener.EventTime,
         audioTrackConfig: AudioSink.AudioTrackConfig,
     ) {
+        AudioOutputState.passthrough =
+            audioTrackConfig.encoding !in
+                setOf(
+                    C.ENCODING_PCM_8BIT,
+                    C.ENCODING_PCM_16BIT,
+                    C.ENCODING_PCM_16BIT_BIG_ENDIAN,
+                    C.ENCODING_PCM_24BIT,
+                    C.ENCODING_PCM_32BIT,
+                    C.ENCODING_PCM_FLOAT,
+                )
         Timber.i(
             "Audio: track initialized encoding=%d channelConfig=%d rate=%d tunneling=%s offload=%s",
             audioTrackConfig.encoding,
