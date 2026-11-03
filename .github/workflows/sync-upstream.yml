@@ -33,7 +33,8 @@ jobs:
       - name: Fetch the original repository
         run: |
           git remote add upstream https://github.com/damontecres/Wholphin.git
-          git fetch upstream main --tags
+          git fetch --no-tags upstream main
+          git fetch upstream 'refs/tags/v*:refs/tags/v*'
           git log --oneline HEAD..upstream/main | head -20
       - name: Rebase
         id: rebase
@@ -56,7 +57,7 @@ jobs:
         if: steps.rebase.outputs.changed == 'true' && !inputs.dry_run
         run: |
           git push --force-with-lease origin shield-fix
-          git push origin --tags || true
+          git push origin 'refs/tags/v*' || true
       - name: Build the new version
         if: steps.rebase.outputs.changed == 'true' && !inputs.dry_run
         env:
