@@ -67,12 +67,15 @@ fun rememberSeerrDialogBody(
             -> user.username ?: stringResource(R.string.unknown)
 
             SeerrAuthMethod.API_KEY -> stringResource(R.string.api_key)
+
+            SeerrAuthMethod.QUICK_CONNECT -> stringResource(R.string.seerr_quick_connect)
         }
     val method =
         when (user.authMethod) {
             SeerrAuthMethod.LOCAL -> R.string.seerr_local_user
             SeerrAuthMethod.JELLYFIN -> R.string.seerr_jellyfin_user
             SeerrAuthMethod.API_KEY -> 0
+            SeerrAuthMethod.QUICK_CONNECT -> 0
         }.let {
             if (it != 0) " (${stringResource(it)})" else ""
         }

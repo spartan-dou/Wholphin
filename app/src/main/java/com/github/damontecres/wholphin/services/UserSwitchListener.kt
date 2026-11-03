@@ -111,9 +111,13 @@ class UserSwitchListener
                                     if (server != null) {
                                         Timber.i("Found a seerr user & server")
                                         try {
-                                            seerrApi.update(server.url, seerrUser.credential)
+                                            if (seerrUser.authMethod == SeerrAuthMethod.QUICK_CONNECT) {
+                                                seerrApi.update(server.url, null, seerrUser.credential)
+                                            } else {
+                                                seerrApi.update(server.url, seerrUser.credential)
+                                            }
                                             val userConfig =
-                                                if (seerrUser.authMethod != SeerrAuthMethod.API_KEY) {
+                                                if (seerrUser.authMethod == SeerrAuthMethod.LOCAL || seerrUser.authMethod == SeerrAuthMethod.JELLYFIN) {
                                                     seerrLogin(
                                                         seerrApi.api,
                                                         seerrUser.authMethod,

@@ -24,11 +24,31 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
+import okhttp3.Cookie
+import okhttp3.CookieJar
+import okhttp3.HttpUrl
+import okhttp3.HttpUrl.Companion.toHttpUrl
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
+import java.io.IOException
 import org.jellyfin.sdk.model.api.ImageType
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 /**
@@ -145,6 +165,96 @@ class SeerrServerRepository
                             credential = null,
                         )
                     seerrServerDao.addUser(user)
+                    set(server, user, userConfig)
+                }
+            }
+        }
+
+        /**
+         * Logs in with a Quick Connect code: Seerr gives a [code] that the user approves from a logged in
+         * Jellyfin session, then the resulting session cookie is stored for this Jellyfin user
+         *
+         * @param onCode called with the code to show to the user
+         */
+        suspend fun quickConnectLogin(
+            url: String,
+            onCode: (String) -> Unit,
+        ) {
+            val apiBase = createSeerrApiUrl(url).removeSuffix("/")
+            val jar = SessionCookieJar()
+            val client =
+                okHttpClient
+                    .newBuilder()
+                    .cookieJar(jar)
+                    .connectTimeout(5.seconds)
+                    .readTimeout(10.seconds)
+                    .build()
+            val json = "application/json".toMediaType()
+
+            suspend fun call(request: Request): JsonObject =
+                withContext(Dispatchers.IO) {
+                    client.newCall(request).execute().use { response ->
+                        if (!response.isSuccessful) throw IOException("HTTP ${response.code} for ${request.url}")
+                        val text = response.body.string()
+                        if (text.isBlank()) JsonObject(emptyMap()) else Json.parseToJsonElement(text).jsonObject
+                    }
+                }
+
+            val initiated =
+                call(
+                    Request
+                        .Builder()
+                        .url("$apiBase/auth/jellyfin/quickconnect/initiate")
+                        .post("{}".toRequestBody(json))
+                        .build(),
+                )
+            val code = initiated["code"]?.jsonPrimitive?.content ?: throw IOException("No Quick Connect code")
+            val secret = initiated["secret"]?.jsonPrimitive?.content ?: throw IOException("No Quick Connect secret")
+            onCode.invoke(code)
+
+            val checkUrl =
+                "$apiBase/auth/jellyfin/quickconnect/check".toHttpUrl().newBuilder().addQueryParameter("secret", secret).build()
+            withTimeout(5.minutes) {
+                while (true) {
+                    delay(2.seconds)
+                    val status = call(Request.Builder().url(checkUrl).build())
+                    if (status["authenticated"]?.jsonPrimitive?.booleanOrNull == true) break
+                }
+            }
+            call(
+                Request
+                    .Builder()
+                    .url("$apiBase/auth/jellyfin/quickconnect/authenticate")
+                    .post(buildJsonObject { put("secret", secret) }.toString().toRequestBody(json))
+                    .build(),
+            )
+            val session = jar.sessionId ?: throw IOException("Seerr did not return a session")
+            addAndChangeServerWithSession(url, session)
+        }
+
+        private suspend fun addAndChangeServerWithSession(
+            url: String,
+            session: String,
+        ) {
+            var server = seerrServerDao.getServer(url)
+            if (server == null) {
+                seerrServerDao.addServer(SeerrServer(url = url))
+                server = seerrServerDao.getServer(url)
+            }
+            server?.server?.let { server ->
+                serverRepository.currentUser?.let { jellyfinUser ->
+                    val user =
+                        SeerrUser(
+                            jellyfinUserRowId = jellyfinUser.rowId,
+                            serverId = server.id,
+                            authMethod = SeerrAuthMethod.QUICK_CONNECT,
+                            username = null,
+                            password = null,
+                            credential = session,
+                        )
+                    seerrServerDao.addUser(user)
+                    seerrApi.update(server.url, null, session)
+                    val userConfig = seerrApi.api.usersApi.authMeGet()
                     set(server, user, userConfig)
                 }
             }
@@ -334,6 +444,10 @@ suspend fun seerrLogin(
         SeerrAuthMethod.API_KEY -> {
             client.usersApi.authMeGet()
         }
+
+        SeerrAuthMethod.QUICK_CONNECT -> {
+            client.usersApi.authMeGet()
+        }
     }
 
 fun CurrentSeerr?.imageUrlBuilder(
@@ -355,4 +469,25 @@ fun CurrentSeerr?.imageUrlBuilder(
             else -> throw IllegalArgumentException("Image type not supported: $imageType")
         }
     return "${base}${prefix}$path"
+}
+
+/**
+ * Keeps the Seerr session cookie so it can be stored after a Quick Connect login
+ */
+private class SessionCookieJar : CookieJar {
+    @Volatile
+    var sessionId: String? = null
+        private set
+
+    override fun saveFromResponse(
+        url: HttpUrl,
+        cookies: List<Cookie>,
+    ) {
+        cookies.firstOrNull { it.name == "connect.sid" }?.let { sessionId = it.value }
+    }
+
+    override fun loadForRequest(url: HttpUrl): List<Cookie> =
+        sessionId
+            ?.let { listOf(Cookie.Builder().name("connect.sid").value(it).hostOnlyDomain(url.host).build()) }
+            .orEmpty()
 }

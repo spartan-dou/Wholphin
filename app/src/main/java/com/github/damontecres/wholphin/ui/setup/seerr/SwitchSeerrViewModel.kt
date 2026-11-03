@@ -16,6 +16,8 @@ import com.github.damontecres.wholphin.util.LoadingState
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import jakarta.inject.Inject
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -144,6 +146,58 @@ class SwitchSeerrViewModel
             }
         }
 
+        private var quickConnectJob: Job? = null
+
+        /**
+         * Logs in with a Quick Connect code, [SwitchSeerrState.quickConnectCode] is set once there is a code to show
+         */
+        fun startQuickConnect(url: String) {
+            quickConnectJob?.cancel()
+            quickConnectJob =
+                viewModelScope.launchIO {
+                    _state.update { it.copy(serverConnectionStatus = LoadingState.Loading, quickConnectCode = null) }
+                    val urls =
+                        try {
+                            createUrls(url)
+                        } catch (ex: IllegalArgumentException) {
+                            showToast(context, "Invalid URL")
+                            _state.update {
+                                it.copy(serverConnectionStatus = LoadingState.Error("Invalid URL", ex))
+                            }
+                            return@launchIO
+                        }
+                    val errors = mutableListOf<String>()
+                    for (candidate in urls) {
+                        try {
+                            seerrServerRepository.quickConnectLogin(candidate.toString()) { code ->
+                                _state.update { it.copy(quickConnectCode = code) }
+                            }
+                            _state.update {
+                                it.copy(serverConnectionStatus = LoadingState.Success, quickConnectCode = null)
+                            }
+                            return@launchIO
+                        } catch (ex: CancellationException) {
+                            throw ex
+                        } catch (ex: Exception) {
+                            Timber.w(ex, "Quick Connect failed for %s", candidate)
+                            errors.add("$candidate - ${ex.localizedMessage}")
+                        }
+                    }
+                    showToast(context, "Could not connect")
+                    _state.update {
+                        it.copy(
+                            serverConnectionStatus = LoadingState.Error(errors.joinToString("\n")),
+                            quickConnectCode = null,
+                        )
+                    }
+                }
+        }
+
+        fun cancelQuickConnect() {
+            quickConnectJob?.cancel()
+            _state.update { it.copy(serverConnectionStatus = LoadingState.Pending, quickConnectCode = null) }
+        }
+
         fun removeServer() {
             viewModelScope.launchIO {
                 val result = seerrServerRepository.removeServerForCurrentUser()
@@ -176,6 +230,7 @@ data class SwitchSeerrState(
     val loading: LoadingState = LoadingState.Pending,
     val serverConnectionStatus: LoadingState = LoadingState.Pending,
     val initialUrl: String? = null,
+    val quickConnectCode: String? = null,
 )
 
 fun createUrls(url: String): List<HttpUrl> {

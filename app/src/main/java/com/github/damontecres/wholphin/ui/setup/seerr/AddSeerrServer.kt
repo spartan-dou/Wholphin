@@ -341,3 +341,114 @@ private fun AddSeerrServerUsernamePreview() {
         )
     }
 }
+
+/**
+ * Asks for the server URL, then shows the Quick Connect [code] to enter in a logged in Jellyfin session
+ */
+@Composable
+fun AddSeerrServerQuickConnect(
+    initialUrl: String,
+    code: String?,
+    status: LoadingState,
+    onStart: (url: String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var error by remember(status) { mutableStateOf((status as? LoadingState.Error)?.localizedMessage) }
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier =
+            modifier
+                .focusGroup()
+                .padding(16.dp)
+                .wrapContentSize(),
+    ) {
+        var url by remember { mutableStateOf(initialUrl) }
+        val focusRequester = remember { FocusRequester() }
+        LaunchedEffect(code == null) {
+            if (code == null) focusRequester.tryRequestFocus()
+        }
+        Text(
+            text = stringResource(R.string.seerr_quick_connect),
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.align(Alignment.CenterHorizontally),
+        )
+        if (code != null) {
+            Text(
+                text = stringResource(R.string.seerr_quick_connect_instructions),
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+            )
+            Text(
+                text = code,
+                style = MaterialTheme.typography.displayMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+            )
+            CircularProgressIndicator(
+                color = MaterialTheme.colorScheme.border,
+                modifier =
+                    Modifier
+                        .size(24.dp)
+                        .align(Alignment.CenterHorizontally),
+            )
+        } else {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+            ) {
+                Text(
+                    text = stringResource(R.string.url),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier =
+                        Modifier
+                            .width(90.dp)
+                            .padding(end = 8.dp),
+                )
+                EditTextBox(
+                    value = url,
+                    onValueChange = {
+                        error = null
+                        url = it
+                    },
+                    keyboardOptions =
+                        KeyboardOptions(
+                            capitalization = KeyboardCapitalization.None,
+                            autoCorrectEnabled = false,
+                            keyboardType = KeyboardType.Text,
+                            imeAction = ImeAction.Go,
+                        ),
+                    keyboardActions =
+                        KeyboardActions(
+                            onGo = { onStart.invoke(url) },
+                        ),
+                    isInputValid = { true },
+                    modifier = Modifier.focusRequester(focusRequester),
+                )
+            }
+            error?.let {
+                Text(
+                    text = it,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.titleLarge,
+                )
+            }
+            Button(
+                onClick = { onStart.invoke(url) },
+                enabled = error.isNullOrBlank() && url.isNotNullOrBlank() && status != LoadingState.Loading,
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+            ) {
+                if (status != LoadingState.Loading) {
+                    Text(text = stringResource(R.string.submit))
+                } else {
+                    CircularProgressIndicator(
+                        color = MaterialTheme.colorScheme.border,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
+            }
+        }
+    }
+}

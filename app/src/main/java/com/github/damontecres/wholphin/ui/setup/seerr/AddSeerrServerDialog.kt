@@ -95,6 +95,9 @@ fun SeerrDialog(
                         currentUsername = currentUser?.name,
                         status = state.serverConnectionStatus,
                         onSubmit = seerrVm::submitServer,
+                        quickConnectCode = state.quickConnectCode,
+                        onStartQuickConnect = seerrVm::startQuickConnect,
+                        onCancelQuickConnect = seerrVm::cancelQuickConnect,
                         onResetStatus = seerrVm::resetStatus,
                         onDismissRequest = onDismissRequest,
                     )
@@ -158,6 +161,9 @@ fun AddSeerServerDialog(
     initialUrl: String?,
     status: LoadingState,
     onSubmit: (url: String, username: String, passwordOrApiKey: String, method: SeerrAuthMethod) -> Unit,
+    quickConnectCode: String?,
+    onStartQuickConnect: (url: String) -> Unit,
+    onCancelQuickConnect: () -> Unit,
     onResetStatus: () -> Unit,
     onDismissRequest: () -> Unit,
 ) {
@@ -182,6 +188,23 @@ fun AddSeerServerDialog(
                     },
                     username = currentUsername ?: "",
                     status = status,
+                    modifier = Modifier.widthIn(min = 320.dp),
+                )
+            }
+        }
+
+        SeerrAuthMethod.QUICK_CONNECT -> {
+            BasicDialog(
+                onDismissRequest = {
+                    onCancelQuickConnect.invoke()
+                    authMethod = null
+                },
+            ) {
+                AddSeerrServerQuickConnect(
+                    initialUrl = initialUrl ?: "",
+                    code = quickConnectCode,
+                    status = status,
+                    onStart = onStartQuickConnect,
                     modifier = Modifier.widthIn(min = 320.dp),
                 )
             }
@@ -225,6 +248,10 @@ fun ChooseSeerrLoginType(
             title = stringResource(R.string.seerr_login),
             items =
                 listOf(
+                    DialogItem(
+                        text = stringResource(R.string.seerr_quick_connect),
+                        onClick = { onChoose.invoke(SeerrAuthMethod.QUICK_CONNECT) },
+                    ),
                     DialogItem(
                         text = stringResource(R.string.api_key),
                         onClick = { onChoose.invoke(SeerrAuthMethod.API_KEY) },

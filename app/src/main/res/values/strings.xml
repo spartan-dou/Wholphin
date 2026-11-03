@@ -986,4 +986,6 @@
     <string name="home_settings_source_web">User web client</string>
     <string name="managed_by_server">Managed by server</string>
     <string name="error">Error</string>
+    <string name="seerr_quick_connect">Quick Connect (code)</string>
+    <string name="seerr_quick_connect_instructions">In Jellyfin, open your user menu, then Quick Connect, and enter this code</string>
 </resources>
