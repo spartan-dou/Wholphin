@@ -52,6 +52,9 @@ class SwitchSeerrViewModel
                         _state.update { it.copy(loading = LoadingState.Success) }
                     }
                 }
+            } else {
+                // Without the server plugin there is nothing to wait for, show the form right away
+                _state.update { it.copy(loading = LoadingState.Success) }
             }
         }
 
