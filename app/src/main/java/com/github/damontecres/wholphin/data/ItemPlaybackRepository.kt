@@ -6,6 +6,7 @@ import com.github.damontecres.wholphin.data.model.ItemTrackModification
 import com.github.damontecres.wholphin.data.model.RelativeMediaStream
 import com.github.damontecres.wholphin.data.model.SeriesTrackChoice
 import com.github.damontecres.wholphin.data.model.SeriesTrackChoiceType
+import com.github.damontecres.wholphin.data.model.TrackChoiceParentType
 import com.github.damontecres.wholphin.data.model.TrackIndex
 import com.github.damontecres.wholphin.preferences.UserPreferences
 import com.github.damontecres.wholphin.services.StreamChoiceResult
@@ -183,8 +184,7 @@ class ItemPlaybackRepository
                     }
                 Timber.v("Saving track selection %s", toSave)
                 toSave = saveItemPlayback(toSave)
-                val seriesId = item.data.seriesId
-                if (seriesId != null || item.data.parentId != null) {
+                run {
                     if (type == MediaStreamType.AUDIO) {
                         val stream =
                             RelativeMediaStream.from(trackIndex, source.mediaStreams.orEmpty())
@@ -278,7 +278,9 @@ class ItemPlaybackRepository
          */
         suspend fun deleteChosenStreams(chosenStreams: ChosenStreams?) {
             Timber.d("deleteChosenStreams: %s", chosenStreams)
-            val stc = chosenStreams?.audioStc.orEmpty() + chosenStreams?.subtitleStc.orEmpty()
+            val stc =
+                (chosenStreams?.audioStc.orEmpty() + chosenStreams?.subtitleStc.orEmpty())
+                    .filter { it.parentType != TrackChoiceParentType.GLOBAL }
             if (stc.isNotEmpty()) {
                 Timber.d("Deleting %s", stc)
                 seriesTrackChoiceDao.delete(stc)
