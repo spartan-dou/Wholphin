@@ -83,6 +83,13 @@ configure<ApplicationExtension> {
     }
 
     signingConfigs {
+        // Throwaway key shared by every CI debug build so that each APK can update the previous one
+        create("shieldDebug") {
+            storeFile = file("shield-debug.keystore")
+            storePassword = "android"
+            keyAlias = "shielddebug"
+            keyPassword = "android"
+        }
         if (shouldSign.get()) {
             create("ci") {
                 file("ci.keystore").writeBytes(
@@ -129,6 +136,7 @@ configure<ApplicationExtension> {
             isShrinkResources = false
             isDebuggable = true
             applicationIdSuffix = ".debug"
+            signingConfig = signingConfigs.getByName("shieldDebug")
         }
     }
     flavorDimensions += "version"
