@@ -7,6 +7,11 @@ on:
   schedule:
     - cron: '0 3 * * *'
   workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Only check that the rebase works, push nothing"
+        type: boolean
+        default: false
 
 defaults:
   run:
@@ -48,12 +53,12 @@ jobs:
           fi
           echo "changed=true" >> "$GITHUB_OUTPUT"
       - name: Push
-        if: steps.rebase.outputs.changed == 'true'
+        if: steps.rebase.outputs.changed == 'true' && !inputs.dry_run
         run: |
           git push --force-with-lease origin shield-fix
           git push origin --tags || true
       - name: Build the new version
-        if: steps.rebase.outputs.changed == 'true'
+        if: steps.rebase.outputs.changed == 'true' && !inputs.dry_run
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh workflow run shield-build.yml --ref shield-fix
