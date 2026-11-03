@@ -131,6 +131,9 @@ class SwitchSeerrViewModel
                                 passwordOrApiKey,
                             )
                         }
+
+                        // Quick Connect has its own flow, see startQuickConnect
+                        SeerrAuthMethod.QUICK_CONNECT -> {}
                     }
                     _state.update { it.copy(serverConnectionStatus = LoadingState.Success) }
                 } else {
