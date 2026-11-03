@@ -724,4 +724,10 @@
     <string name="audio_books">Livre audio</string>
     <string name="server_version_not_supported">Version du serveur non prise en charge</string>
     <string name="appears_on">Apparaît dans</string>
+    <string name="prefer_dovi_over_hdr10_plus">Privilégier Dolby Vision au HDR10+</string>
+    <string name="prefer_dovi_over_hdr10_plus_summary">Retire les métadonnées HDR10+ des vidéos Dolby Vision, pour les téléviseurs qui les liraient sinon en HDR10+</string>
+    <string name="convert_dovi_profile_7">Convertir Dolby Vision profil 7 en 8.1</string>
+    <string name="convert_dovi_profile_7_summary">Réécrit le profil 7 (double couche) en profil 8.1 (couche unique) avant le décodeur et le lit en lecture directe, pour les appareils dont le décodeur gère le profil 8 mais pas le 7</string>
+    <string name="disable_audio_offload">Désactiver le déchargement audio matériel</string>
+    <string name="disable_audio_offload_summary">Désactiver le déchargement du décodage audio peut corriger des blocages de lecture sur certains appareils</string>
 </resources>
