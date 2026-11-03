@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="seerr_quick_connect">Connexion rapide (code)</string>
+    <string name="seerr_quick_connect_instructions">Dans Jellyfin, ouvre le menu de ton profil puis Connexion rapide, et saisis ce code</string>
+</resources>

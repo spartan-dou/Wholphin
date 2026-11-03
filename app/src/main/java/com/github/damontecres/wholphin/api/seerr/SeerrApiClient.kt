@@ -14,6 +14,7 @@ class SeerrApiClient(
     val baseUrl: String,
     private val apiKey: String?,
     okHttpClient: OkHttpClient,
+    private val sessionCookie: String? = null,
 ) {
     private val cookieJar = SeerrCookieJar()
 
@@ -29,6 +30,7 @@ class SeerrApiClient(
                         .newBuilder()
                         .apply {
                             if (apiKey.isNotNullOrBlank()) header("X-Api-Key", apiKey)
+                            if (sessionCookie.isNotNullOrBlank()) header("Cookie", "connect.sid=$sessionCookie")
                         }.build(),
                 )
             }.build()
@@ -36,6 +38,7 @@ class SeerrApiClient(
     val hasValidCredentials: Boolean
         get() =
             apiKey.isNotNullOrBlank() ||
+                sessionCookie.isNotNullOrBlank() ||
                 cookieJar.hasValidCredentials(baseUrl)
 
     private fun <T : ApiClient> create(initializer: (String, Call.Factory) -> T): Lazy<T> =
