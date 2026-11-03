@@ -4,28 +4,15 @@ description: "Setup the environment"
 runs:
   using: "composite"
   steps:
-    # Setup the SDKs
-    - name: Set up Python
-      uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7
-      with:
-        python-version: '3.14'
     - name: Setup JDK
       uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
       with:
         distribution: zulu
         java-version: '21'
-        cache: 'gradle'
-    - name: Set versions
-      shell: bash
-      run: |
-        echo "BUILD_TOOLS_VERSION=36.0.0" >> $GITHUB_ENV
-        echo "NDK_VERSION=29.0.14206865" >> $GITHUB_ENV
+    # Caches dependencies and Gradle's build cache between runs so unchanged tasks are skipped
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v4
     - name: Setup Android SDK
       uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4
       with:
-        packages: "platform-tools build-tools;${{ env.BUILD_TOOLS_VERSION }} ndk;${{ env.NDK_VERSION }}"
-    - name: Add NDK to path
-      shell: bash
-      run: |
-        echo "Adding to path: ${{ env.ANDROID_SDK_ROOT }}/ndk/${{ env.NDK_VERSION }}:${{ env.ANDROID_SDK_ROOT }}/ndk/${{ env.NDK_VERSION }}/toolchains/llvm/prebuilt/linux-x86_64/bin"
-        echo "${{ env.ANDROID_SDK_ROOT }}/ndk/${{ env.NDK_VERSION }}:${{ env.ANDROID_SDK_ROOT }}/ndk/${{ env.NDK_VERSION }}/toolchains/llvm/prebuilt/linux-x86_64/bin" >> $GITHUB_PATH
+        packages: "platform-tools build-tools;36.0.0"

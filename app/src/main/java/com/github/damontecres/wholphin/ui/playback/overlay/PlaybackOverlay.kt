@@ -326,6 +326,17 @@ fun PlaybackOverlay(
         ) {
             TimeDisplay()
         }
+        AnimatedVisibility(
+            visible = !showDebugInfo && controllerViewState.controlsVisible,
+            enter = fadeIn(),
+            exit = fadeOut(),
+            modifier =
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = if (showClock) 52.dp else 16.dp, end = 24.dp),
+        ) {
+            PlaybackInfoPanel(player = player, currentPlayback = currentPlayback)
+        }
 
         // Debug overlay
         AnimatedVisibility(
