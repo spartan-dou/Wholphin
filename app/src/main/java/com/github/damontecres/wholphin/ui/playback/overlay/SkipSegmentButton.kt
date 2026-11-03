@@ -1,9 +1,9 @@
 package com.github.damontecres.wholphin.ui.playback.overlay
 
-import androidx.compose.animation.animateColor
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.InfiniteRepeatableSpec
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -17,7 +17,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.tv.material3.MaterialTheme
@@ -37,27 +37,31 @@ fun SkipSegmentButton(
     onLongClick: (() -> Unit)? = null,
     interactionSource: MutableInteractionSource? = null,
 ) {
+    // The animated value is only read while drawing so the button is not recomposed on every frame
     val infiniteTransition = rememberInfiniteTransition("SkipSegmentButton")
-    val color by infiniteTransition.animateColor(
-        initialValue = MaterialTheme.colorScheme.onSurface,
-        targetValue = Color.Transparent,
+    val pulse by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
         animationSpec =
             InfiniteRepeatableSpec(
-                animation = tween(durationMillis = 1500, easing = LinearEasing),
+                animation = tween(durationMillis = 1400, easing = FastOutSlowInEasing),
                 repeatMode = RepeatMode.Reverse,
             ),
-        label = "SkipSegmentButton_color",
+        label = "SkipSegmentButton_pulse",
     )
+    val glowColor = MaterialTheme.colorScheme.onSurface
     Button(
         onClick = onClick,
         modifier =
             modifier.drawBehind {
-                val px = 6.dp.toPx()
+                // Soft halo that gently breathes around the button
+                val grow = (3f + 5f * pulse).dp.toPx()
                 drawRoundRect(
-                    color = color,
-                    cornerRadius = CornerRadius(this.size.width * .5f),
-                    topLeft = Offset(-px, -px),
-                    size = Size(this.size.width + px * 2, this.size.height + px * 2),
+                    color = glowColor.copy(alpha = 0.55f - 0.40f * pulse),
+                    cornerRadius = CornerRadius(this.size.height / 2f + grow),
+                    topLeft = Offset(-grow, -grow),
+                    size = Size(this.size.width + grow * 2, this.size.height + grow * 2),
+                    style = Stroke(width = 2.dp.toPx()),
                 )
             },
         onLongClick = onLongClick,
