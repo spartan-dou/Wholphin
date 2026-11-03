@@ -48,6 +48,14 @@ val gitTags =
         .standardOutput.asText
         .get()
 
+// Grows with every commit so that each CI build can update the previous one
+val gitCommitCount =
+    providers
+        .exec { commandLine("git", "rev-list", "--count", "HEAD") }
+        .standardOutput.asText
+        .map { it.trim().toIntOrNull() }
+        .orNull
+
 val gitDescribe =
     providers
         .exec { commandLine("git", "describe", "--tags", "--long", "--match=v*") }
@@ -75,7 +83,7 @@ configure<ApplicationExtension> {
         applicationId = "com.github.damontecres.wholphin"
         minSdk = libs.versions.minSdk.getInt()
         targetSdk = libs.versions.targetSdk.getInt()
-        versionCode = gitTags.trim().lines().size
+        versionCode = gitCommitCount ?: gitTags.trim().lines().size
         versionName = gitDescribe.trim().removePrefix("v").ifBlank { "0.0.0" }
         testInstrumentationRunner = "com.github.damontecres.wholphin.test.WholphinTestRunner"
 
@@ -116,6 +124,8 @@ configure<ApplicationExtension> {
                 "proguard-rules.pro",
             )
             isDebuggable = false
+            // Installs next to the official Wholphin
+            applicationIdSuffix = ".shield"
             if (shouldSign.get()) {
                 signingConfig = signingConfigs.getByName("ci")
             } else {
@@ -127,6 +137,10 @@ configure<ApplicationExtension> {
                     if (signingConfigName != null) {
                         signingConfig = signingConfigs.getByName(signingConfigName)
                     }
+                }
+                // Without a private key, use the shared throwaway one so the APK stays installable and updatable
+                if (signingConfig == null) {
+                    signingConfig = signingConfigs.getByName("shieldDebug")
                 }
             }
         }
@@ -188,8 +202,9 @@ configure<ApplicationExtension> {
             isEnable = !isBuildingBundle.get()
 
             reset()
-            include("armeabi-v7a", "arm64-v8a", "x86_64")
-            isUniversalApk = true
+            // The Shield runs a 32-bit userland
+            include("armeabi-v7a")
+            isUniversalApk = false
         }
     }
     packaging {
