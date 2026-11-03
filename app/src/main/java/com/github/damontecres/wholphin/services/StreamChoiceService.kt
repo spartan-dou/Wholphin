@@ -4,7 +4,6 @@ import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.SeriesTrackChoiceDao
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.ActivationFlag
-import com.github.damontecres.wholphin.data.model.GLOBAL_TRACK_CHOICE_ID
 import com.github.damontecres.wholphin.data.model.ItemPlayback
 import com.github.damontecres.wholphin.data.model.RelativeMediaStream
 import com.github.damontecres.wholphin.data.model.SeriesTrackChoice
@@ -86,17 +85,6 @@ class StreamChoiceService
                                 activation = activation,
                             )
                         }?.let(::add)
-                    add(
-                        SeriesTrackChoice(
-                            userId = userId,
-                            itemId = dto.id,
-                            parentId = GLOBAL_TRACK_CHOICE_ID,
-                            type = type,
-                            parentType = TrackChoiceParentType.GLOBAL,
-                            stream = stream,
-                            activation = activation,
-                        ),
-                    )
                 }
             Timber.d(
                 "Saving series track choices for itemId=%s, seriesId=%s, parentId=%s: %s",
@@ -481,20 +469,7 @@ class StreamChoiceService
             return candidates.firstOrNull { it.language.isUnknown && isForcedOrSigns(it) }
         }
 
-        /**
-         * The global choice (last one made anywhere) comes first, then the season and series ones as fallbacks
-         */
         suspend fun getSeriesTrackChoices(
-            seriesId: UUID?,
-            seasonId: UUID?,
-            type: SeriesTrackChoiceType,
-        ): List<SeriesTrackChoice> {
-            val userId = serverRepository.currentUser?.rowId ?: return emptyList()
-            val global = seriesTrackChoiceDao.getBySeriesId(userId, GLOBAL_TRACK_CHOICE_ID, type)
-            return global + getParentTrackChoices(seriesId, seasonId, type)
-        }
-
-        private suspend fun getParentTrackChoices(
             seriesId: UUID?,
             seasonId: UUID?,
             type: SeriesTrackChoiceType,
@@ -738,14 +713,6 @@ sealed interface StreamChoiceReason {
             ResProviderStringProvider(R.string.chosen_by, SEASON_PROVIDER)
     }
 
-    data class Global(
-        val stc: SeriesTrackChoice,
-        override val scores: List<ScoredMediaStream>,
-    ) : StreamChoiceReason {
-        override val description: StringProvider =
-            ResProviderStringProvider(R.string.chosen_by, USER_PROVIDER)
-    }
-
     data class Item(
         val itemPlayback: ItemPlayback,
     ) : StreamChoiceReason {
@@ -760,7 +727,6 @@ sealed interface StreamChoiceReason {
         ) = when (stc.parentType) {
             TrackChoiceParentType.SERIES -> Series(stc, scores)
             TrackChoiceParentType.SEASON -> Season(stc, scores)
-            TrackChoiceParentType.GLOBAL -> Global(stc, scores)
             TrackChoiceParentType.DEPRECATED -> Unknown
             TrackChoiceParentType.UNKNOWN -> Unknown
         }
