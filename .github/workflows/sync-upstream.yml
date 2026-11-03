@@ -1,0 +1,59 @@
+name: Sync upstream
+
+# Rebases the Shield branch on the original Wholphin repository every night and builds it.
+# If the rebase conflicts nothing is pushed and the run fails, so the branch stays on its last working state.
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the Shield branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: shield-fix
+          fetch-depth: 0
+      - name: Fetch the original repository
+        run: |
+          git remote add upstream https://github.com/damontecres/Wholphin.git
+          git fetch upstream main --tags
+          git log --oneline HEAD..upstream/main | head -20
+      - name: Rebase
+        id: rebase
+        run: |
+          if git merge-base --is-ancestor upstream/main HEAD; then
+            echo "Already up to date"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if ! git rebase upstream/main; then
+            git status --short
+            git rebase --abort
+            echo "::error::Rebase conflicts with the original repository, resolve them by hand"
+            exit 1
+          fi
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+      - name: Push
+        if: steps.rebase.outputs.changed == 'true'
+        run: |
+          git push --force-with-lease origin shield-fix
+          git push origin --tags || true
+      - name: Build the new version
+        if: steps.rebase.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run shield-build.yml --ref shield-fix
