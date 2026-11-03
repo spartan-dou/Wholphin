@@ -293,7 +293,7 @@ sealed interface AppPreference<Pref, T> {
         val AutoPlayNextDelay =
             AppSliderPreference<AppPreferences>(
                 title = R.string.auto_play_next_delay,
-                defaultValue = 15,
+                defaultValue = 10,
                 min = 0,
                 max = 60,
                 interval = 5,
@@ -838,7 +838,7 @@ sealed interface AppPreference<Pref, T> {
         val ShowNextUpTiming =
             AppChoicePreference<AppPreferences, ShowNextUpWhen>(
                 title = R.string.show_next_up_when,
-                defaultValue = ShowNextUpWhen.END_OF_PLAYBACK,
+                defaultValue = ShowNextUpWhen.DURING_CREDITS,
                 getter = { it.playbackPreferences.showNextUpWhen },
                 setter = { prefs, value ->
                     prefs.updatePlaybackPreferences { showNextUpWhen = value }

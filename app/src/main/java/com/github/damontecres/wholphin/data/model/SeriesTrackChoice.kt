@@ -196,4 +196,14 @@ enum class TrackChoiceParentType {
      * Parent ID origin is unknown
      */
     UNKNOWN,
+
+    /**
+     * Not tied to any content: the last choice made applies to every movie and episode
+     */
+    GLOBAL,
 }
+
+/**
+ * [SeriesTrackChoice.parentId] used for the [TrackChoiceParentType.GLOBAL] choice
+ */
+val GLOBAL_TRACK_CHOICE_ID: UUID = UUID(0L, 0L)
