@@ -69,6 +69,8 @@ enum class SeerrAuthMethod {
     LOCAL,
     JELLYFIN,
     API_KEY,
+    /** Session cookie obtained with a Quick Connect code, stored in [SeerrUser.credential] */
+    QUICK_CONNECT,
 }
 
 /**
