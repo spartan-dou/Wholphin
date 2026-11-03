@@ -231,6 +231,8 @@ configure<ApplicationExtension> {
     }
     androidResources {
         generateLocaleConfig = true
+        // Only ship the languages actually used on this Shield
+        localeFilters += listOf("en", "fr")
     }
 }
 
@@ -354,7 +356,6 @@ dependencies {
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.lifecycle.viewmodel.navigation3)
-    implementation(libs.androidx.material3.adaptive.navigation3)
     implementation(libs.kotlinx.serialization.core)
     implementation(libs.kotlinx.serialization.json)
 
@@ -364,10 +365,8 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.hilt.navigation.compose)
     implementation(libs.androidx.preference.ktx)
-    implementation(libs.androidx.room.testing)
     implementation(libs.androidx.palette.ktx)
     implementation(libs.androidx.media3.effect)
-    implementation(libs.androidx.runner)
     ksp(libs.androidx.room.compiler)
     ksp(libs.hilt.android.compiler)
     ksp(libs.androidx.hilt.compiler)
