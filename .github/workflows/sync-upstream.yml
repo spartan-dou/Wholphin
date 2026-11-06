@@ -20,6 +20,7 @@ defaults:
 permissions:
   contents: write
   actions: write
+  issues: write
 
 jobs:
   sync:
@@ -38,6 +39,10 @@ jobs:
           git log --oneline HEAD..upstream/main | head -20
       - name: Rebase
         id: rebase
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Without it, gh picks the "upstream" remote and targets the original repository
+          GH_REPO: ${{ github.repository }}
         run: |
           if git merge-base --is-ancestor upstream/main HEAD; then
             echo "Already up to date"
@@ -48,8 +53,20 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           if ! git rebase upstream/main; then
             git status --short
+            conflicts=$(git diff --name-only --diff-filter=U)
+            stopped_at=$(git log -1 --format='%h %s' REBASE_HEAD 2>/dev/null || true)
             git rebase --abort
             echo "::error::Rebase conflicts with the original repository, resolve them by hand"
+            # An issue makes the failure visible: a red scheduled run alone went unnoticed for days
+            upstream_sha=$(git rev-parse --short upstream/main)
+            title="Nightly rebase conflicts with upstream ${upstream_sha}"
+            if [ -z "$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[].number')" ]; then
+              printf 'Rebasing `shield-fix` on the original repository (`%s`) fails at:\n\n    %s\n\nConflicting files:\n```\n%s\n```\n\nRun: %s\n' \
+                "$upstream_sha" "$stopped_at" "$conflicts" \
+                "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" \
+                | gh issue create --title "$title" --body-file - \
+                || echo "::warning::Could not open an issue (are issues enabled on the repository?)"
+            fi
             exit 1
           fi
           echo "changed=true" >> "$GITHUB_OUTPUT"
