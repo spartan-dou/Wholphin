@@ -165,19 +165,38 @@ private fun audioChips(stream: MediaStream?): List<String> {
     val text = listOfNotNull(stream.displayTitle, stream.title, stream.profile).joinToString(" ").lowercase()
     val name =
         when {
-            "atmos" in text && codec == "truehd" -> "Dolby TrueHD Atmos"
-            "atmos" in text -> "Dolby Atmos"
-            codec == "eac3" -> "Dolby Digital+"
-            codec == "ac3" -> "Dolby Digital"
-            codec == "truehd" -> "Dolby TrueHD"
-            codec == "dts" ->
+            "atmos" in text && codec == "truehd" -> {
+                "Dolby TrueHD Atmos"
+            }
+
+            "atmos" in text -> {
+                "Dolby Atmos"
+            }
+
+            codec == "eac3" -> {
+                "Dolby Digital+"
+            }
+
+            codec == "ac3" -> {
+                "Dolby Digital"
+            }
+
+            codec == "truehd" -> {
+                "Dolby TrueHD"
+            }
+
+            codec == "dts" -> {
                 when {
                     "dts:x" in text || "dts-x" in text -> "DTS:X"
                     "dts-hd ma" in text || "master" in text -> "DTS-HD MA"
                     "dts-hd" in text -> "DTS-HD HRA"
                     else -> "DTS"
                 }
-            else -> codec?.uppercase()
+            }
+
+            else -> {
+                codec?.uppercase()
+            }
         }
     val channels =
         when (val n = stream.channels) {
