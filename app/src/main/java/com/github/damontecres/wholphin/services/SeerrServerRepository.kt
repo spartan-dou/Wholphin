@@ -19,13 +19,13 @@ import com.github.damontecres.wholphin.ui.isNotNullOrBlank
 import com.github.damontecres.wholphin.ui.setup.seerr.createSeerrApiUrl
 import com.github.damontecres.wholphin.util.LoadingState
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
@@ -43,9 +43,9 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
-import java.io.IOException
 import org.jellyfin.sdk.model.api.ImageType
 import timber.log.Timber
+import java.io.IOException
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlin.time.Duration.Companion.minutes
@@ -488,6 +488,14 @@ private class SessionCookieJar : CookieJar {
 
     override fun loadForRequest(url: HttpUrl): List<Cookie> =
         sessionId
-            ?.let { listOf(Cookie.Builder().name("connect.sid").value(it).hostOnlyDomain(url.host).build()) }
-            .orEmpty()
+            ?.let {
+                listOf(
+                    Cookie
+                        .Builder()
+                        .name("connect.sid")
+                        .value(it)
+                        .hostOnlyDomain(url.host)
+                        .build(),
+                )
+            }.orEmpty()
 }

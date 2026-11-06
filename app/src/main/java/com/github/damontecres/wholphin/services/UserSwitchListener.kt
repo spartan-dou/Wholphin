@@ -117,7 +117,9 @@ class UserSwitchListener
                                                 seerrApi.update(server.url, seerrUser.credential)
                                             }
                                             val userConfig =
-                                                if (seerrUser.authMethod == SeerrAuthMethod.LOCAL || seerrUser.authMethod == SeerrAuthMethod.JELLYFIN) {
+                                                if (seerrUser.authMethod == SeerrAuthMethod.LOCAL ||
+                                                    seerrUser.authMethod == SeerrAuthMethod.JELLYFIN
+                                                ) {
                                                     seerrLogin(
                                                         seerrApi.api,
                                                         seerrUser.authMethod,

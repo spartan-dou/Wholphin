@@ -6,10 +6,10 @@ import android.content.Context
 import android.os.Build
 import android.os.Handler
 import androidx.annotation.OptIn
-import androidx.media3.common.AudioAttributes
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionParameters.AudioOffloadPreferences
@@ -17,19 +17,19 @@ import androidx.media3.common.util.ExperimentalApi
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
-import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.DefaultLoadControl
+import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.Renderer
 import androidx.media3.exoplayer.RenderersFactory
+import androidx.media3.exoplayer.analytics.AnalyticsListener
+import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.exoplayer.video.MediaCodecVideoRenderer
 import androidx.media3.exoplayer.video.VideoRendererEventListener
 import androidx.media3.extractor.DefaultExtractorsFactory
-import androidx.media3.exoplayer.analytics.AnalyticsListener
-import androidx.media3.exoplayer.audio.AudioSink
 import androidx.media3.extractor.ExtractorsFactory
 import androidx.media3.extractor.ts.DefaultTsPayloadReaderFactory
 import androidx.media3.extractor.ts.TsExtractor
@@ -352,14 +352,14 @@ object AudioDiagnosticsListener : AnalyticsListener {
     ) {
         AudioOutputState.passthrough =
             audioTrackConfig.encoding !in
-                setOf(
-                    C.ENCODING_PCM_8BIT,
-                    C.ENCODING_PCM_16BIT,
-                    C.ENCODING_PCM_16BIT_BIG_ENDIAN,
-                    C.ENCODING_PCM_24BIT,
-                    C.ENCODING_PCM_32BIT,
-                    C.ENCODING_PCM_FLOAT,
-                )
+            setOf(
+                C.ENCODING_PCM_8BIT,
+                C.ENCODING_PCM_16BIT,
+                C.ENCODING_PCM_16BIT_BIG_ENDIAN,
+                C.ENCODING_PCM_24BIT,
+                C.ENCODING_PCM_32BIT,
+                C.ENCODING_PCM_FLOAT,
+            )
         Timber.i(
             "Audio: track initialized encoding=%d channelConfig=%d rate=%d tunneling=%s offload=%s",
             audioTrackConfig.encoding,
