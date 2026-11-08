@@ -236,6 +236,9 @@ class PlaybackViewModel
             isHdr: Boolean,
             is4k: Boolean,
         ) {
+            // The decoder of a 4K remux needs most of the memory of a 2GB device, free what the UI
+            // cached: the posters are reloaded from the disk cache when coming back
+            context.imageLoader.memoryCache?.clear()
             val softwareDecoding =
                 !preferences.appPreferences.playbackPreferences.mpvOptions.enableHardwareDecoding
             val requestBackend =
