@@ -42,6 +42,7 @@ import com.github.damontecres.wholphin.ui.util.StreamFormatting.formatSubtitleCo
 import com.github.damontecres.wholphin.ui.util.StreamFormatting.formatVideoRange
 import com.github.damontecres.wholphin.ui.util.StreamFormatting.resolutionString
 import com.github.damontecres.wholphin.util.languageName
+import com.github.damontecres.wholphin.util.releaseLabel
 import org.jellyfin.sdk.model.api.MediaSourceInfo
 import org.jellyfin.sdk.model.api.MediaStream
 
@@ -107,6 +108,9 @@ fun VideoStreamDetails(
             )
         }
         videoStream?.codec?.uppercase()?.let {
+            StreamLabel(it)
+        }
+        remember(source) { releaseLabel(source?.path) ?: releaseLabel(source?.name) }?.let {
             StreamLabel(it)
         }
 

@@ -82,6 +82,7 @@ import com.github.damontecres.wholphin.ui.components.BasicDialog
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.nav.Destination
+import com.github.damontecres.wholphin.ui.playback.overlay.AudioFormatToast
 import com.github.damontecres.wholphin.ui.playback.overlay.DpadSeekOverlay
 import com.github.damontecres.wholphin.ui.playback.overlay.PauseIndicator
 import com.github.damontecres.wholphin.ui.playback.overlay.PlaybackAction
@@ -467,6 +468,14 @@ fun PlaybackPageContent(
                             .align(Alignment.Center),
                 )
             }
+
+            AudioFormatToast(
+                currentPlayback = state.currentPlayback,
+                modifier =
+                    Modifier
+                        .align(Alignment.BottomStart)
+                        .padding(start = 32.dp, bottom = 32.dp),
+            )
 
             // The playback controls
 

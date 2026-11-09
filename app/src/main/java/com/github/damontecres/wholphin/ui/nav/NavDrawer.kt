@@ -465,60 +465,7 @@ fun NavDrawer(
                                         ),
                             )
                         }
-                        if (serviceState.moreItems.isNotEmpty()) {
-                            item {
-                                val index = serviceState.items.size
-                                val interactionSource = remember { MutableInteractionSource() }
-                                NavItem(
-                                    library = NavDrawerItem.More,
-                                    selected = false,
-                                    moreExpanded = moreExpanded,
-                                    drawerOpen = isOpen,
-                                    interactionSource = interactionSource,
-                                    onClick = {
-                                        viewModel.onClickDrawerItem(index, NavDrawerItem.More)
-                                    },
-                                    modifier =
-                                        Modifier
-                                            .ifElse(
-                                                selectedIndex == index,
-                                                Modifier.focusRequester(focusRequester),
-                                            ),
-                                )
-                            }
-                        }
-                        if (moreExpanded) {
-                            itemsIndexed(serviceState.moreItems) { index, it ->
-                                val adjustedIndex =
-                                    remember(serviceState) { (index + serviceState.items.size) }
-                                val interactionSource = remember { MutableInteractionSource() }
-                                NavItem(
-                                    library = it,
-                                    selected = selectedIndex == adjustedIndex,
-                                    moreExpanded = moreExpanded,
-                                    drawerOpen = isOpen,
-                                    onClick = {
-                                        viewModel.onClickDrawerItem(
-                                            adjustedIndex,
-                                            it,
-                                        )
-                                    },
-                                    containerColor =
-                                        if (isOpen) {
-                                            MaterialTheme.colorScheme.surface.copy(alpha = .5f)
-                                        } else {
-                                            Color.Unspecified
-                                        },
-                                    interactionSource = interactionSource,
-                                    modifier =
-                                        Modifier
-                                            .ifElse(
-                                                selectedIndex == adjustedIndex,
-                                                Modifier.focusRequester(focusRequester),
-                                            ),
-                                )
-                            }
-                        }
+                        // No "More" button: the items hidden in it stay hidden
                         item {
                             val interactionSource = remember { MutableInteractionSource() }
                             IconNavItem(

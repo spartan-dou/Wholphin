@@ -85,6 +85,27 @@ fun CollectionFolderViewScope.CollectionFolderGrid(
                             .padding(HeaderUtils.padding),
                 )
             }
+            // Without the details header, still tell when the focused movie or episode would end
+            val focusedRuntime = focusedItem?.timeRemainingOrRuntime
+            AnimatedVisibility(!viewOptions.showDetails && focusedItem != null && focusedRuntime != null) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(HeaderUtils.padding),
+                ) {
+                    Text(
+                        text = focusedItem?.title.orEmpty(),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    focusedRuntime?.let { TimeRemaining(it, textStyle = MaterialTheme.typography.titleMedium) }
+                }
+            }
             CardGrid(
                 pager = items,
                 onClickItem = onClickItem,
