@@ -17,7 +17,6 @@ import androidx.media3.common.util.ExperimentalApi
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
-import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.Renderer
@@ -182,7 +181,10 @@ class PlayerFactory
                             .setMediaSourceFactory(mediaSourceFactory)
                             .setRenderersFactory(renderersFactory)
                             .setTrackSelector(trackSelector)
-                            .setLoadControl(lanLoadControl())
+                            // Keep media3's default load control, like Just Player. A byte cap below it starves the
+                            // passthrough audio: Android only starts the 2.25MB DTS-HD AudioTrack once its buffer is
+                            // full, which takes more than 40MB of a high bitrate 4K remux, so playback froze on the
+                            // first frame whenever it did not start at the beginning of the file
                             .build()
                             .apply {
                                 addAnalyticsListener(AudioDiagnosticsListener)
@@ -207,18 +209,6 @@ class PlayerFactory
             currentPlayer = newPlayer
             return PlayerCreation(newPlayer, assHandler)
         }
-
-        /**
-         * Larger read-ahead than the defaults for big remuxes on the local network, but capped in bytes
-         * so the 32-bit Shield heap is never at risk
-         */
-        private fun lanLoadControl(): DefaultLoadControl =
-            DefaultLoadControl
-                .Builder()
-                .setBufferDurationsMs(30_000, 60_000, 2_000, 5_000)
-                .setTargetBufferBytes(40 * 1024 * 1024)
-                .setPrioritizeTimeOverSizeThresholds(false)
-                .build()
 
         fun createAudioPlayer(
             disableAudioOffload: Boolean,
@@ -260,7 +250,8 @@ class PlayerFactory
                 }
         }
 
-        // TS settings as in Just Player (https://github.com/google/ExoPlayer/issues/8571)
+        // The TS settings are the ones of Just Player (https://github.com/google/ExoPlayer/issues/8571),
+        // the constant bitrate seeking is for the music player and is not set by Just Player
         private fun createExtractorsFactory() =
             DefaultExtractorsFactory()
                 .setConstantBitrateSeekingEnabled(true)
