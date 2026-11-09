@@ -1111,6 +1111,14 @@ sealed interface AppPreference<Pref, T> {
                 setter = { prefs, _ -> prefs },
             )
 
+        val ArrImport =
+            AppClickablePreference<AppPreferences>(
+                title = R.string.arr_import,
+                summary = R.string.arr_import_summary,
+                getter = { },
+                setter = { prefs, _ -> prefs },
+            )
+
         val QuickConnect =
             AppClickablePreference<AppPreferences>(
                 title = R.string.quick_connect,
@@ -1227,6 +1235,7 @@ val basicPreferences =
                 buildList {
                     if (BuildConfig.DISCOVER_ENABLED) {
                         add(AppPreference.SeerrIntegration)
+                        add(AppPreference.ArrImport)
                     }
                     add(AppPreference.AdvancedSettings)
                 },

@@ -211,6 +211,44 @@ private fun LazyListScope.addAdditionalConfig(
             }
         }
 
+        is HomeRowConfig.Upcoming -> {
+            item {
+                var showDialog by remember { mutableStateOf(false) }
+                ListItem(
+                    selected = false,
+                    onClick = { showDialog = true },
+                    headlineContent = {
+                        PreferenceTitle(stringResource(R.string.upcoming_item_count))
+                    },
+                    supportingContent = {
+                        Text(text = config.itemCount.toString())
+                    },
+                )
+                if (showDialog) {
+                    BasicDialog(
+                        onDismissRequest = { showDialog = false },
+                        elevation = 5.dp,
+                    ) {
+                        LazyColumn(
+                            contentPadding = PaddingValues(8.dp),
+                            modifier = Modifier.width(240.dp),
+                        ) {
+                            items(HomeRowConfig.Upcoming.ITEM_COUNTS) { count ->
+                                ListItem(
+                                    selected = count == config.itemCount,
+                                    onClick = {
+                                        onConfigChange.invoke(config.copy(itemCount = count))
+                                        showDialog = false
+                                    },
+                                    headlineContent = { Text(text = count.toString()) },
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         else -> {}
     }
 }
@@ -444,6 +482,20 @@ internal object Options {
                 preferences =
                     listOf(
                         ViewOptionsUseThumb,
+                        ViewOptionsReset,
+                    ),
+            ),
+        )
+
+    val UPCOMING_OPTIONS =
+        listOf(
+            PreferenceGroup(
+                title = R.string.general,
+                preferences =
+                    listOf(
+                        ViewOptionsCardHeight,
+                        ViewOptionsSpacing,
+                        ViewOptionsShowTitles,
                         ViewOptionsReset,
                     ),
             ),

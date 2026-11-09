@@ -2,6 +2,7 @@ package com.github.damontecres.wholphin.services
 
 import androidx.core.net.toUri
 import com.github.damontecres.wholphin.R
+import com.github.damontecres.wholphin.WholphinApplication
 import com.github.damontecres.wholphin.data.ServerRepository
 import com.github.damontecres.wholphin.data.model.BaseItem
 import com.github.damontecres.wholphin.data.model.HomeRowConfig
@@ -77,6 +78,7 @@ class HomeDataService
         private val latestNextUpService: LatestNextUpService,
         private val imageUrlService: ImageUrlService,
         private val suggestionService: SuggestionService,
+        private val arrCalendarService: ArrCalendarService,
     ) {
         /**
          * Fetch the data from the server for a given [HomeRowConfig]
@@ -681,6 +683,19 @@ class HomeDataService
                         HomeRowLoadingState.Error(
                             title = title,
                             message = "Unsupported type ${library.collectionType}",
+                        )
+                    }
+                }
+
+                is HomeRowConfig.Upcoming -> {
+                    val title = ResStringProvider(R.string.upcoming_releases)
+                    val items = arrCalendarService.getUpcoming(row.itemCount)
+                    if (items != null) {
+                        Success(title, items, row.viewOptions, rowType = row, showViewMore = false)
+                    } else {
+                        HomeRowLoadingState.Error(
+                            title = title,
+                            message = WholphinApplication.instance.getString(R.string.upcoming_import_required),
                         )
                     }
                 }

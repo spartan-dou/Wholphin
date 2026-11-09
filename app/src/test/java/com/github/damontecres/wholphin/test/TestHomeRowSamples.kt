@@ -78,6 +78,7 @@ class TestHomeRowSamples {
                 HomeRowConfig.TvPrograms(),
                 HomeRowConfig.TvChannels(),
                 HomeRowConfig.Suggestions(parentId = UUID.randomUUID()),
+                HomeRowConfig.Upcoming(itemCount = 10),
                 HomeRowConfig.CustomEndpoint(
                     endpoint = "/path/to/items",
                     title = "Items",
@@ -108,6 +109,7 @@ class TestHomeRowSamples {
                 is HomeRowConfig.TvChannels -> foundTypes.add(it::class)
                 is HomeRowConfig.Studios -> foundTypes.add(it::class)
                 is HomeRowConfig.CustomEndpoint -> foundTypes.add(it::class)
+                is HomeRowConfig.Upcoming -> foundTypes.add(it::class)
             }
         }
         Assert.assertEquals(HomeRowConfig::class.sealedSubclasses.size, foundTypes.size)

@@ -563,6 +563,14 @@ class HomeSettingsService
                     )
                 }
 
+                is HomeRowConfig.Upcoming -> {
+                    HomeRowConfigDisplay(
+                        id = id,
+                        title = ResStringProvider(R.string.upcoming_releases),
+                        config,
+                    )
+                }
+
                 is HomeRowConfig.CustomEndpoint -> {
                     HomeRowConfigDisplay(
                         id = id,

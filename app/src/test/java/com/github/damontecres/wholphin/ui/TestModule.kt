@@ -13,6 +13,7 @@ import androidx.work.WorkManager
 import com.github.damontecres.wholphin.BuildConfig
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.data.AppDatabase
+import com.github.damontecres.wholphin.data.ArrServerDao
 import com.github.damontecres.wholphin.data.ItemPlaybackDao
 import com.github.damontecres.wholphin.data.JellyfinServerDao
 import com.github.damontecres.wholphin.data.LibraryDisplayInfoDao
@@ -258,6 +259,10 @@ object TestDatabaseModule {
         @Provides
         @Singleton
         fun seerrServerDao(db: AppDatabase): SeerrServerDao = db.seerrServerDao()
+
+        @Provides
+        @Singleton
+        fun arrServerDao(db: AppDatabase): ArrServerDao = db.arrServerDao()
 
         @Provides
         @Singleton

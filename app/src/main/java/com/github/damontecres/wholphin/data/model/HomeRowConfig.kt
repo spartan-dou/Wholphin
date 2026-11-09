@@ -194,6 +194,23 @@ sealed interface HomeRowConfig {
     }
 
     /**
+     * Next releases from the Radarr and Sonarr calendars
+     */
+    @Serializable
+    @SerialName("Upcoming")
+    data class Upcoming(
+        val itemCount: Int = DEFAULT_ITEM_COUNT,
+        override val viewOptions: HomeRowViewOptions = HomeRowViewOptions.upcomingDefault,
+    ) : HomeRowConfig {
+        override fun updateViewOptions(viewOptions: HomeRowViewOptions): Upcoming = this.copy(viewOptions = viewOptions)
+
+        companion object {
+            const val DEFAULT_ITEM_COUNT = 20
+            val ITEM_COUNTS = listOf(5, 10, 15, DEFAULT_ITEM_COUNT, 30, 50)
+        }
+    }
+
+    /**
      * Fetch items from an arbitrary Jellyfin endpoint that returns a QueryResult<BaseItemDto>.
      * Lets third-party plugins (e.g. home-sections) contribute rows without Wholphin needing
      * specific knowledge of them.
@@ -265,6 +282,8 @@ data class HomeRowViewOptions(
                 heightDp = Cards.HEIGHT_EPISODE,
                 aspectRatio = AspectRatio.WIDE,
             )
+
+        val upcomingDefault = HomeRowViewOptions(showTitles = true)
 
         val liveTvDefault =
             HomeRowViewOptions(

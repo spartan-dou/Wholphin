@@ -7,6 +7,7 @@ import androidx.room.TypeConverter
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.github.damontecres.wholphin.data.model.ArrServer
 import com.github.damontecres.wholphin.data.model.GetItemsFilter
 import com.github.damontecres.wholphin.data.model.ItemPlayback
 import com.github.damontecres.wholphin.data.model.ItemTrackModification
@@ -50,8 +51,9 @@ import java.util.UUID
         SeerrUser::class,
         RememberedTab::class,
         SeriesTrackChoice::class,
+        ArrServer::class,
     ],
-    version = 41,
+    version = 42,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(3, 4),
@@ -72,6 +74,7 @@ import java.util.UUID
         AutoMigration(34, 35),
         AutoMigration(35, 40),
         AutoMigration(40, 41),
+        AutoMigration(41, 42),
     ],
 )
 @TypeConverters(Converters::class)
@@ -93,6 +96,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun rememberedTabDao(): RememberedTabDao
 
     abstract fun seriesTrackChoiceDao(): SeriesTrackChoiceDao
+
+    abstract fun arrServerDao(): ArrServerDao
 }
 
 class Converters {

@@ -12,6 +12,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.res.stringResource
+import com.github.damontecres.wholphin.BuildConfig
 import com.github.damontecres.wholphin.R
 import com.github.damontecres.wholphin.ui.ifElse
 
@@ -64,11 +65,14 @@ fun HomeSettingsAddRow(
                 HorizontalDivider()
             }
             itemsIndexed(
-                listOf(
-                    MetaRowType.FAVORITES,
-                    MetaRowType.COLLECTION,
-                    MetaRowType.PLAYLIST,
-                ),
+                buildList {
+                    add(MetaRowType.FAVORITES)
+                    add(MetaRowType.COLLECTION)
+                    add(MetaRowType.PLAYLIST)
+                    if (BuildConfig.DISCOVER_ENABLED) {
+                        add(MetaRowType.UPCOMING)
+                    }
+                },
             ) { index, type ->
                 HomeSettingsListItem(
                     selected = false,
@@ -101,4 +105,5 @@ enum class MetaRowType(
     DISCOVER(R.string.discover),
     COLLECTION(R.string.collection),
     PLAYLIST(R.string.playlist),
+    UPCOMING(R.string.upcoming_releases),
 }

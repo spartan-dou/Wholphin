@@ -160,6 +160,7 @@ fun HomeSettingsPage(
                                             MetaRowType.CONTINUE_WATCHING,
                                             MetaRowType.NEXT_UP,
                                             MetaRowType.COMBINED_CONTINUE_WATCHING,
+                                            MetaRowType.UPCOMING,
                                             -> {
                                                 addRow { viewModel.addRow(it) }
                                             }
@@ -220,6 +221,8 @@ fun HomeSettingsPage(
 
                                             is HomeRowConfig.Genres -> Options.GENRE_OPTIONS
 
+                                            is HomeRowConfig.Upcoming -> Options.UPCOMING_OPTIONS
+
                                             else -> Options.OPTIONS
                                         }
                                     }
@@ -227,6 +230,7 @@ fun HomeSettingsPage(
                                     remember(row.config) {
                                         when (row.config) {
                                             is HomeRowConfig.Genres -> HomeRowViewOptions.genreDefault
+                                            is HomeRowConfig.Upcoming -> HomeRowViewOptions.upcomingDefault
                                             else -> HomeRowViewOptions()
                                         }
                                     }

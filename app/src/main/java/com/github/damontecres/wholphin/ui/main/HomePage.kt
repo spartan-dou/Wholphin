@@ -79,6 +79,7 @@ import com.github.damontecres.wholphin.ui.data.RowColumn
 import com.github.damontecres.wholphin.ui.detail.PlaylistDialog
 import com.github.damontecres.wholphin.ui.indexOfFirstOrNull
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
+import com.github.damontecres.wholphin.ui.joinNotBlank
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.playback.isPlayKeyUp
 import com.github.damontecres.wholphin.ui.playback.playable
@@ -141,7 +142,7 @@ fun HomePage(
                             homeRows.getOrNull(clickedPosition.row)?.isContinueWatchingNextUp == true
                         ) {
                             viewModel.navigationManager.navigateTo(Destination.Playback(item))
-                        } else {
+                        } else if (item.upcoming == null || item.destinationOverride != null) {
                             viewModel.navigationManager.navigateTo(item.destination())
                         }
                     }
@@ -218,7 +219,13 @@ fun HomePage(
                 position = position,
                 onFocusPosition = onFocusPosition,
                 onClickItem = onClickItem,
-                onLongClickItem = onLongClickItem,
+                onLongClickItem =
+                    remember {
+                        { clickedPosition: RowColumn, item: BaseItem ->
+                            // Upcoming items aren't on the server so none of the actions apply
+                            if (item.upcoming == null) onLongClickItem(clickedPosition, item)
+                        }
+                    },
                 onClickPlay = onClickPlay,
                 loadingState = refreshing,
                 showClock = preferences.appPreferences.interfacePreferences.showClock,
@@ -562,7 +569,7 @@ fun HomePageHeader(
                 BaseItemKind.EPISODE,
                 -> item.name
 
-                else -> null
+                else -> item?.upcoming?.let { listOf(it.date, it.details).joinNotBlank(" - ") }
             }
         }
     HomePageHeader(
@@ -693,12 +700,12 @@ fun HomePageCardContent(
             if (viewOptions.showTitles) {
                 BannerCardWithTitle(
                     title = item?.title,
-                    subtitle = item?.subtitle,
+                    subtitle = item?.upcoming?.details ?: item?.subtitle,
                     item = item,
                     aspectRatio = ratio,
                     imageType = imageType,
                     imageContentScale = scale,
-                    cornerText = item?.ui?.episodeUnplayedCornerText,
+                    cornerText = item?.upcoming?.date ?: item?.ui?.episodeUnplayedCornerText,
                     played = item?.data?.userData?.played ?: false,
                     favorite = item?.favorite ?: false,
                     playPercent =
@@ -717,7 +724,7 @@ fun HomePageCardContent(
                     aspectRatio = ratio,
                     imageType = imageType,
                     imageContentScale = scale,
-                    cornerText = item?.ui?.episodeUnplayedCornerText,
+                    cornerText = item?.upcoming?.date ?: item?.ui?.episodeUnplayedCornerText,
                     played = item?.data?.userData?.played ?: false,
                     favorite = item?.favorite ?: false,
                     playPercent =

@@ -80,6 +80,8 @@ import com.github.damontecres.wholphin.ui.preferences.subtitle.SubtitleSettings
 import com.github.damontecres.wholphin.ui.serverSupportedMessage
 import com.github.damontecres.wholphin.ui.setup.ReleaseNotes
 import com.github.damontecres.wholphin.ui.setup.UpdateViewModel
+import com.github.damontecres.wholphin.ui.setup.seerr.ArrImportDialog
+import com.github.damontecres.wholphin.ui.setup.seerr.ArrImportViewModel
 import com.github.damontecres.wholphin.ui.setup.seerr.SeerrDialog
 import com.github.damontecres.wholphin.ui.setup.seerr.SeerrDialogMode
 import com.github.damontecres.wholphin.ui.setup.seerr.SwitchSeerrViewModel
@@ -100,6 +102,7 @@ fun PreferencesContent(
     viewModel: PreferencesViewModel = hiltViewModel(),
     updateVM: UpdateViewModel = hiltViewModel(),
     seerrVm: SwitchSeerrViewModel = hiltViewModel(),
+    arrImportVm: ArrImportViewModel = hiltViewModel(),
     onFocus: (Int, Int) -> Unit = { _, _ -> },
 ) {
     val context = LocalContext.current
@@ -125,6 +128,8 @@ fun PreferencesContent(
     var cacheUsage by remember { mutableStateOf(CacheUsage(0, 0, 0)) }
     val seerrConnection by viewModel.seerrConnection.collectAsState()
     var seerrDialogMode by remember { mutableStateOf<SeerrDialogMode>(SeerrDialogMode.None) }
+    val arrImportState by arrImportVm.state.collectAsState()
+    val arrServers by arrImportVm.servers.collectAsState(emptyList())
     var showQuickConnectDialog by remember { mutableStateOf(false) }
     var showLocaleChoiceDialog by remember { mutableStateOf(false) }
 
@@ -539,6 +544,29 @@ fun PreferencesContent(
                                     )
                                 }
 
+                                AppPreference.ArrImport -> {
+                                    val seerrRequired = stringResource(R.string.arr_import_seerr_required)
+                                    ClickPreference(
+                                        title = stringResource(pref.title),
+                                        onClick = {
+                                            if (seerrConnection.connection is SeerrConnectionStatus.Success) {
+                                                arrImportVm.startImport()
+                                            } else {
+                                                Toast.makeText(context, seerrRequired, Toast.LENGTH_SHORT).show()
+                                            }
+                                        },
+                                        modifier = focusModifier,
+                                        summary =
+                                            if (arrServers.isEmpty()) {
+                                                pref.summary(context, null)
+                                            } else {
+                                                stringResource(R.string.arr_import_count, arrServers.size)
+                                            },
+                                        onLongClick = {},
+                                        interactionSource = interactionSource,
+                                    )
+                                }
+
                                 AppPreference.QuickConnect -> {
                                     ClickPreference(
                                         title = stringResource(pref.title),
@@ -729,6 +757,11 @@ fun PreferencesContent(
         seerrConnection = seerrConnection,
         onDismissRequest = { seerrDialogMode = SeerrDialogMode.None },
         seerrVm = seerrVm,
+    )
+
+    ArrImportDialog(
+        state = arrImportState,
+        onDismissRequest = arrImportVm::dismiss,
     )
 
     if (showQuickConnectDialog) {

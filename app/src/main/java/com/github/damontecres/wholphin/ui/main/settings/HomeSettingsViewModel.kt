@@ -273,6 +273,14 @@ class HomeSettingsViewModel
                             )
                         }
 
+                        MetaRowType.UPCOMING -> {
+                            HomeRowConfigDisplay(
+                                id = id,
+                                title = ResStringProvider(R.string.upcoming_releases),
+                                config = HomeRowConfig.Upcoming(),
+                            )
+                        }
+
                         MetaRowType.FAVORITES,
                         MetaRowType.COLLECTION,
                         MetaRowType.PLAYLIST,
@@ -778,7 +786,9 @@ class HomeSettingsViewModel
                                     it.config.updateViewOptions(preset.liveTv)
                                 }
 
-                                is HomeRowConfig.CustomEndpoint -> {
+                                is HomeRowConfig.CustomEndpoint,
+                                is HomeRowConfig.Upcoming,
+                                -> {
                                     it.config
                                 }
                             }

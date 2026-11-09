@@ -46,6 +46,7 @@ data class BaseItem(
     val useSeriesForPrimary: Boolean = false,
     val imageUrlOverride: String? = null,
     val destinationOverride: Destination? = null,
+    val upcoming: UpcomingDisplay? = null,
 ) : CardGridItem {
     val id get() = data.id
 
@@ -359,6 +360,17 @@ val BaseItemDto.aspectRatioFloat: Float? get() = width?.let { w -> height?.let {
 
 /** The server strips leading articles (eg "The ") from [BaseItemDto.sortName]. */
 val BaseItemDto.alphabetSortName: String get() = sortName ?: name ?: ""
+
+/**
+ * Set on items which come from Radarr or Sonarr, so they don't exist on the Jellyfin server
+ */
+@Immutable
+@Serializable
+data class UpcomingDisplay(
+    val date: String,
+    val details: String?,
+    val backdropUrl: String?,
+)
 
 @Immutable
 data class BaseItemUi(
