@@ -52,6 +52,7 @@ class DeviceProfileService
                             maxBitrate = prefs.maxBitrate.toInt(),
                             overrides = prefs.overrides,
                             experimental = appPrefs.experimentalPreferences,
+                            displayHdrTypes = mediaCodecCapabilitiesTest.getDisplayHdrTypes(),
                             jellyfinTenEleven =
                                 serverVersion != null && serverVersion >= ServerVersion(10, 11, 0),
                         )
@@ -82,6 +83,7 @@ class DeviceProfileService
                                 forceDisabledHdr =
                                     appPrefs.getHdrRangeTypesFor(HdrOverrideMode.HDR_OVERRIDE_DISABLE, newConfig.jellyfinTenEleven),
                                 jellyfinTenEleven = newConfig.jellyfinTenEleven,
+                                displayHdrTypes = newConfig.displayHdrTypes,
                                 maxResolution = newConfig.overrides.maxResolution,
                             )
                     }
@@ -97,5 +99,6 @@ data class DeviceProfileConfiguration(
     val maxBitrate: Int,
     val overrides: PlaybackOverrides,
     val experimental: ExperimentalPreferences,
+    val displayHdrTypes: Set<Int>?,
     val jellyfinTenEleven: Boolean,
 )

@@ -70,9 +70,19 @@ fun PlaybackInfoPanel(
     val output =
         if (currentPlayback?.backend == PlayerBackend.EXO_PLAYER) {
             when (AudioOutputState.passthrough) {
-                true -> "Passthrough"
-                false -> "PCM"
-                null -> null
+                true -> {
+                    val sent = AudioOutputState.passthroughName(AudioOutputState.encoding)
+                    if (sent != null) "Passthrough: $sent" else "Passthrough"
+                }
+
+                // Decoding to PCM drops the Atmos objects: say so rather than let the user wonder
+                false -> {
+                    if (audioChips.any { "Atmos" in it }) "PCM (no Atmos)" else "PCM"
+                }
+
+                null -> {
+                    null
+                }
             }
         } else {
             null

@@ -256,6 +256,29 @@ class MediaCodecCapabilitiesTest(
 
     fun supportsVc1(): Boolean = hasCodecForMime(MimeTypes.VIDEO_VC1)
 
+    /**
+     * The `Display.HdrCapabilities.HDR_TYPE_*` the connected display can show, or null when the
+     * platform cannot tell (before API 24). An empty set is a display without HDR.
+     *
+     * Since API 34 the types are reported per display mode and the current mode may be an SDR one
+     * that is switched when HDR starts playing, so the types of every mode are merged
+     */
+    fun getDisplayHdrTypes(): Set<Int>? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return null
+        return try {
+            val types = mutableSetOf<Int>()
+            display.hdrCapabilities?.supportedHdrTypes?.let { types.addAll(it.toList()) }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                display.supportedModes.forEach { types.addAll(it.supportedHdrTypes.toList()) }
+            }
+            Timber.i("Display HDR types: %s", types)
+            types
+        } catch (ex: Exception) {
+            Timber.w(ex, "Could not read the HDR capabilities of the display")
+            null
+        }
+    }
+
     private fun getDecoderLevel(
         mime: String,
         profile: Int,

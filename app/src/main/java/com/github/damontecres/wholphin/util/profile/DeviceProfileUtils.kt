@@ -4,6 +4,7 @@ package com.github.damontecres.wholphin.util.profile
 
 import android.media.MediaCodecInfo
 import android.util.Size
+import android.view.Display.HdrCapabilities
 import androidx.media3.common.MimeTypes
 import com.github.damontecres.wholphin.util.profile.KnownDefects.supportsHi10P52
 import org.jellyfin.sdk.model.api.CodecType
@@ -61,7 +62,49 @@ val supportedAudioCodecs =
 //    )
 // }
 
+/** Largest AV1 picture the software decoder is trusted with */
+private val SOFTWARE_AV1_MAX_SIZE = Size(1920, 1088)
+
 private fun Size.min(min: Int) = if (min > 0 && height > min) Size(width, min) else this
+
+/**
+ * The range types the connected display cannot show, from its `Display.HdrCapabilities.HDR_TYPE_*`.
+ * The decoders alone say nothing about it: on a TV without Dolby Vision a profile 5 file has no
+ * HDR10 layer to fall back on and plays with purple tones, and HDR10 on an SDR TV is washed out.
+ * Letting the server convert those is better than playing them wrongly.
+ *
+ * Only a hint for the automatic mode: the user overrides are applied afterwards and win.
+ *
+ * @param displayHdrTypes the types the display can show, null when unknown (nothing is excluded)
+ */
+internal fun displayUnsupportedRangeTypes(
+    displayHdrTypes: Set<Int>?,
+    jellyfinTenEleven: Boolean,
+): Set<String> {
+    if (displayHdrTypes == null) return emptySet()
+    val dolbyVision = HdrCapabilities.HDR_TYPE_DOLBY_VISION in displayHdrTypes
+    // A Dolby Vision display always shows HDR10 too, whether or not it says so
+    val hdr10 = dolbyVision || HdrCapabilities.HDR_TYPE_HDR10 in displayHdrTypes
+    val hlg = hdr10 || HdrCapabilities.HDR_TYPE_HLG in displayHdrTypes
+    return buildSet {
+        // Profile 5 has no backward compatible layer
+        if (!dolbyVision) add(WholphinVideoRangeType.DOVI.serialName)
+        if (!hdr10) {
+            add(WholphinVideoRangeType.HDR10.serialName)
+            add(WholphinVideoRangeType.HDR10_PLUS.serialName)
+            add(WholphinVideoRangeType.DOVI_WITH_HDR10.serialName)
+            if (jellyfinTenEleven) {
+                add(WholphinVideoRangeType.DOVI_WITH_HDR10_PLUS.serialName)
+                add(WholphinVideoRangeType.DOVI_WITH_EL.serialName)
+                add(WholphinVideoRangeType.DOVI_WITH_EL_HDR10_PLUS.serialName)
+            }
+        }
+        if (!hlg) {
+            add(WholphinVideoRangeType.HLG.serialName)
+            add(WholphinVideoRangeType.DOVI_WITH_HLG.serialName)
+        }
+    }
+}
 
 fun createDeviceProfile(
     mediaTest: MediaCodecCapabilitiesTest,
@@ -76,7 +119,10 @@ fun createDeviceProfile(
     forceEnabledHdr: Set<String>,
     forceDisabledHdr: Set<String>,
     maxResolution: Int,
+    displayHdrTypes: Set<Int>? = null,
 ) = buildDeviceProfile {
+    val displayUnsupportedHdr = displayUnsupportedRangeTypes(displayHdrTypes, jellyfinTenEleven)
+
     val allowedAudioCodecs =
         when {
             downMixAudio -> {
@@ -434,6 +480,18 @@ fun createDeviceProfile(
                 ProfileConditionValue.HEIGHT lowerThanOrEquals maxResolutionAV1.height
             }
         }
+    } else if (!supportsAV1) {
+        // Without a hardware decoder (the Shield's Tegra X1 has none) the software decoder is the only
+        // one: it keeps up at 1080p but drops frames at 4K, where the server's transcode is smoother
+        codecProfile {
+            type = CodecType.VIDEO
+            codec = Codec.Video.AV1
+
+            conditions {
+                ProfileConditionValue.WIDTH lowerThanOrEquals SOFTWARE_AV1_MAX_SIZE.width
+                ProfileConditionValue.HEIGHT lowerThanOrEquals SOFTWARE_AV1_MAX_SIZE.height
+            }
+        }
     }
 
     // VC1
@@ -484,6 +542,8 @@ fun createDeviceProfile(
                     if (!mediaTest.supportsAV1HDR10()) add(WholphinVideoRangeType.HDR10.serialName)
                 }
             }
+
+            addAll(displayUnsupportedHdr)
         } - forceEnabledHdr + forceDisabledHdr
 
     val unsupportedRangeTypesHevc =
@@ -516,6 +576,8 @@ fun createDeviceProfile(
                 add(WholphinVideoRangeType.DOVI_WITH_HDR10_PLUS.serialName)
                 add(WholphinVideoRangeType.DOVI_WITH_EL_HDR10_PLUS.serialName)
             }
+
+            addAll(displayUnsupportedHdr)
         } - forceEnabledHdr + forceDisabledHdr
 
     // Display

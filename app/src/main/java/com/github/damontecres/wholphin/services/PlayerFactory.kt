@@ -5,6 +5,7 @@ package com.github.damontecres.wholphin.services
 import android.content.Context
 import android.os.Build
 import android.os.Handler
+import android.os.SystemClock
 import androidx.annotation.OptIn
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -188,6 +189,7 @@ class PlayerFactory
                             .build()
                             .apply {
                                 addAnalyticsListener(AudioDiagnosticsListener)
+                                addAnalyticsListener(PlaybackMetricsListener())
                                 assHandler?.init(this)
                                 withContext(WholphinDispatchers.Main) {
                                     setAudioAttributes(
@@ -315,6 +317,118 @@ object TrustAllControllersCallback : MediaSession.Callback {
 object AudioOutputState {
     /** True when the compressed audio is sent as is to the receiver, false when it is decoded to PCM */
     var passthrough by mutableStateOf<Boolean?>(null)
+
+    /** The `C.ENCODING_*` of the audio track, which tells what the receiver is really given */
+    var encoding by mutableStateOf<Int?>(null)
+
+    /** Short name of the compressed format sent to the receiver, null for PCM or when unknown */
+    fun passthroughName(encoding: Int?): String? =
+        when (encoding) {
+            C.ENCODING_AC3 -> "Dolby Digital"
+            C.ENCODING_E_AC3 -> "Dolby Digital+"
+            C.ENCODING_E_AC3_JOC -> "Dolby Digital+ Atmos"
+            C.ENCODING_AC4 -> "Dolby AC-4"
+            C.ENCODING_DOLBY_TRUEHD -> "Dolby TrueHD"
+            C.ENCODING_DTS -> "DTS"
+            C.ENCODING_DTS_HD -> "DTS-HD"
+            C.ENCODING_DTS_UHD_P2 -> "DTS:X"
+            else -> null
+        }
+}
+
+/**
+ * Measures what the user feels: time to the first frame, rebuffering, dropped frames and the network
+ * speed, logged once per playback when the player is released. Without numbers, tuning is guessing.
+ */
+@OptIn(UnstableApi::class)
+class PlaybackMetricsListener : AnalyticsListener {
+    private var loadStartMs = -1L
+    private var firstFrameLogged = false
+    private var wasReady = false
+    private var rebuffers = 0
+    private var droppedFrames = 0L
+    private var bandwidthSum = 0L
+    private var bandwidthSamples = 0
+
+    override fun onIsLoadingChanged(
+        eventTime: AnalyticsListener.EventTime,
+        isLoading: Boolean,
+    ) {
+        if (isLoading && loadStartMs < 0) loadStartMs = SystemClock.elapsedRealtime()
+    }
+
+    override fun onRenderedFirstFrame(
+        eventTime: AnalyticsListener.EventTime,
+        output: Any,
+        renderTimeMs: Long,
+    ) {
+        if (!firstFrameLogged && loadStartMs >= 0) {
+            firstFrameLogged = true
+            Timber.i("Metrics: first frame after %d ms", SystemClock.elapsedRealtime() - loadStartMs)
+        }
+    }
+
+    override fun onPlaybackStateChanged(
+        eventTime: AnalyticsListener.EventTime,
+        state: Int,
+    ) {
+        when (state) {
+            Player.STATE_READY -> {
+                wasReady = true
+            }
+
+            Player.STATE_BUFFERING -> {
+                // Buffering after having played is a rebuffer, not the initial load nor a seek
+                if (wasReady && eventTime.timeline.windowCount > 0) {
+                    wasReady = false
+                    rebuffers++
+                    Timber.w("Metrics: rebuffer #%d at position=%d", rebuffers, eventTime.currentPlaybackPositionMs)
+                }
+            }
+        }
+    }
+
+    override fun onPositionDiscontinuity(
+        eventTime: AnalyticsListener.EventTime,
+        oldPosition: Player.PositionInfo,
+        newPosition: Player.PositionInfo,
+        reason: Int,
+    ) {
+        // A seek buffers on purpose, it must not be counted as a rebuffer
+        if (reason == Player.DISCONTINUITY_REASON_SEEK || reason == Player.DISCONTINUITY_REASON_SEEK_ADJUSTMENT) {
+            wasReady = false
+        }
+    }
+
+    override fun onDroppedVideoFrames(
+        eventTime: AnalyticsListener.EventTime,
+        droppedFrames: Int,
+        elapsedMs: Long,
+    ) {
+        this.droppedFrames += droppedFrames
+        Timber.w("Metrics: dropped %d frames in %d ms", droppedFrames, elapsedMs)
+    }
+
+    override fun onBandwidthEstimate(
+        eventTime: AnalyticsListener.EventTime,
+        totalLoadTimeMs: Int,
+        totalBytesLoaded: Long,
+        bitrateEstimate: Long,
+    ) {
+        if (bitrateEstimate > 0) {
+            bandwidthSum += bitrateEstimate
+            bandwidthSamples++
+        }
+    }
+
+    override fun onPlayerReleased(eventTime: AnalyticsListener.EventTime) {
+        Timber.i(
+            "Metrics: summary rebuffers=%d droppedFrames=%d avgBandwidthMbps=%.1f",
+            rebuffers,
+            droppedFrames,
+            if (bandwidthSamples > 0) bandwidthSum.toDouble() / bandwidthSamples / 1_000_000 else 0.0,
+        )
+    }
 }
 
 /**
@@ -341,6 +455,7 @@ object AudioDiagnosticsListener : AnalyticsListener {
         eventTime: AnalyticsListener.EventTime,
         audioTrackConfig: AudioSink.AudioTrackConfig,
     ) {
+        AudioOutputState.encoding = audioTrackConfig.encoding
         AudioOutputState.passthrough =
             audioTrackConfig.encoding !in
             setOf(

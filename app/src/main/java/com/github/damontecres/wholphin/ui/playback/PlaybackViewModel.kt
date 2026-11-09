@@ -189,6 +189,10 @@ class PlaybackViewModel
         internal lateinit var itemId: UUID
         internal lateinit var currentItem: PlaylistItem
         internal var forceTranscoding: Boolean = false
+
+        // The item ExoPlayer could not decode, which is played with MPV instead
+        private var mpvFallbackItemId: UUID? = null
+        private var networkRetries = 0
         private var activityListener: TrackActivityPlaybackListener? = null
         private var trackChangeListener: TracksChangedListener? = null
         private val jobs = mutableListOf<Job>()
@@ -242,8 +246,12 @@ class PlaybackViewModel
             val softwareDecoding =
                 !preferences.appPreferences.playbackPreferences.mpvOptions.enableHardwareDecoding
             val requestBackend =
-                (destination as? Destination.Playback)?.backend
-                    ?: preferences.appPreferences.playbackPreferences.playerBackend
+                if (itemId == mpvFallbackItemId) {
+                    PlayerBackend.MPV
+                } else {
+                    (destination as? Destination.Playback)?.backend
+                        ?: preferences.appPreferences.playbackPreferences.playerBackend
+                }
             val playerBackend =
                 when (requestBackend) {
                     PlayerBackend.UNRECOGNIZED,
@@ -1112,6 +1120,7 @@ class PlaybackViewModel
             }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
+            if (playbackState == Player.STATE_READY) networkRetries = 0
             if (playbackState == Player.STATE_ENDED) {
                 Timber.v("Playback state is STATE_ENDED")
                 viewModelScope.launchDefault {
@@ -1421,6 +1430,20 @@ class PlaybackViewModel
         override fun onPlayerError(error: PlaybackException) {
             Timber.e(error, "Playback error")
             viewModelScope.launch(WholphinDispatchers.Main + ExceptionHandler()) {
+                val kind = PlaybackErrorPolicy.classify(error.errorCode)
+                if (kind == PlaybackErrorKind.TRANSIENT_NETWORK &&
+                    networkRetries < PlaybackErrorPolicy.MAX_NETWORK_RETRIES
+                ) {
+                    // A dropped connection says nothing about the format: playing again from the
+                    // same position is far better than restarting the whole stream as a transcode
+                    networkRetries++
+                    Timber.w("Network error, retry %d from %d ms", networkRetries, player.currentPosition)
+                    delay(PlaybackErrorPolicy.retryDelayMs(networkRetries))
+                    player.prepare()
+                    player.play()
+                    return@launch
+                }
+                if (kind == PlaybackErrorKind.UNSUPPORTED_FORMAT && tryMpvFallback()) return@launch
                 state.value.currentPlayback?.let {
                     when (it.playMethod) {
                         PlayMethod.TRANSCODE -> {
@@ -1457,6 +1480,41 @@ class PlaybackViewModel
                         }
                     }
                 }
+            }
+        }
+
+        /**
+         * ExoPlayer only plays what the device decodes. Before asking the server to transcode, play the
+         * same item again from the same position with MPV, whose ffmpeg decodes (nearly) everything.
+         *
+         * HDR is left to the transcode, which the server tone maps correctly, while MPV on Android would not
+         * show it right. Tried once per item.
+         *
+         * @return true if playback was restarted with MPV
+         */
+        private suspend fun tryMpvFallback(): Boolean {
+            val playback = state.value.currentPlayback ?: return false
+            val videoStream = state.value.currentMediaInfo.videoStream
+            val isHdr = videoStream?.hdr == true
+            if (playback.backend != PlayerBackend.EXO_PLAYER ||
+                playback.playMethod == PlayMethod.TRANSCODE ||
+                isHdr ||
+                mpvFallbackItemId == itemId
+            ) {
+                return false
+            }
+            val positionMs = player.currentPosition.coerceAtLeast(0)
+            Timber.w("ExoPlayer cannot play %s, trying MPV from %d ms", itemId, positionMs)
+            mpvFallbackItemId = itemId
+            return try {
+                play(currentItem, positionMs, forceTranscoding = false)
+            } catch (ex: CancellationException) {
+                throw ex
+            } catch (ex: Exception) {
+                // MPV is missing or failed to start: the player is gone, make the next play create one
+                Timber.e(ex, "MPV fallback failed, transcoding")
+                currentPlayer.update { null }
+                play(currentItem, positionMs, forceTranscoding = true)
             }
         }
 
