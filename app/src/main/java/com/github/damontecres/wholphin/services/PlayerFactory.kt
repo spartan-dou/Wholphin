@@ -18,6 +18,7 @@ import androidx.media3.common.util.ExperimentalApi
 import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.okhttp.OkHttpDataSource
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.Renderer
@@ -182,10 +183,10 @@ class PlayerFactory
                             .setMediaSourceFactory(mediaSourceFactory)
                             .setRenderersFactory(renderersFactory)
                             .setTrackSelector(trackSelector)
-                            // Keep media3's default load control, like Just Player. A byte cap below it starves the
-                            // passthrough audio: Android only starts the 2.25MB DTS-HD AudioTrack once its buffer is
-                            // full, which takes more than 40MB of a high bitrate 4K remux, so playback froze on the
-                            // first frame whenever it did not start at the beginning of the file
+                            // 64MB: the media3 default (about 130MB for 4K, on the Java heap) got the app killed by Android
+                            // on the 2GB Shield, but 40MB starved the passthrough audio: the 2.25MB DTS-HD AudioTrack only
+                            // starts once its buffer is full, which needs more than 40MB of a high bitrate 4K remux
+                            .setLoadControl(shieldLoadControl())
                             .build()
                             .apply {
                                 addAnalyticsListener(AudioDiagnosticsListener)
@@ -211,6 +212,12 @@ class PlayerFactory
             currentPlayer = newPlayer
             return PlayerCreation(newPlayer, assHandler)
         }
+
+        private fun shieldLoadControl(): DefaultLoadControl =
+            DefaultLoadControl
+                .Builder()
+                .setTargetBufferBytes(64 * 1024 * 1024)
+                .build()
 
         fun createAudioPlayer(
             disableAudioOffload: Boolean,

@@ -23,6 +23,8 @@ import okhttp3.OkHttpClient
 import timber.log.Timber
 import kotlin.time.ExperimentalTime
 
+private const val MAX_IMAGE_MEMORY_BYTES = 48L * 1024 * 1024
+
 @Composable
 fun CoilConfig(
     prefs: AppPreferences,
@@ -77,7 +79,9 @@ fun CoilConfig(
             .Builder(ctx)
             .apply {
                 if (enableCache) {
-                    memoryCache(MemoryCache.Builder().maxSizePercent(ctx).build())
+                    // Capped: a fast scroll through 200+ posters filled the default cache (a quarter of the heap limit) and
+                    // Android killed the app on the 2GB Shield
+                    memoryCache(MemoryCache.Builder().maxSizeBytes(MAX_IMAGE_MEMORY_BYTES).build())
                     diskCache(
                         DiskCache
                             .Builder()

@@ -55,6 +55,7 @@ import com.github.damontecres.wholphin.services.PlaylistCreator
 import com.github.damontecres.wholphin.services.RefreshRateService
 import com.github.damontecres.wholphin.services.ScreensaverService
 import com.github.damontecres.wholphin.services.StreamChoiceService
+import com.github.damontecres.wholphin.services.ThemeSongPlayer
 import com.github.damontecres.wholphin.services.UserPreferencesService
 import com.github.damontecres.wholphin.ui.formatBitrate
 import com.github.damontecres.wholphin.ui.gt
@@ -157,6 +158,7 @@ class PlaybackViewModel
         private val imageUrlService: ImageUrlService,
         private val screensaverService: ScreensaverService,
         private val musicService: MusicService,
+        private val themeSongPlayer: ThemeSongPlayer,
         @Assisted private val destination: Destination,
     ) : ViewModel(),
         Player.Listener,
@@ -618,6 +620,7 @@ class PlaybackViewModel
                         trickPlayInfo = trickPlayInfo,
                     )
                 }
+                themeSongPlayer.stopAndAwaitOutputClosed()
                 withContext(WholphinDispatchers.Main) {
                     changeStreams(
                         item = item,
@@ -902,6 +905,20 @@ class PlaybackViewModel
                             player.addListener(it)
                             this@PlaybackViewModel.trackChangeListener = it
                         }
+                        // The chosen audio track is only known once the tracks are, by then the player has
+                        // already opened its default one. Two passthrough outputs in a row (TrueHD then DTS-HD)
+                        // disturb the HDMI output, so audio stays off until TracksChangedListener selects it.
+                        // Always set, so that a fallback to transcoding gets its audio back
+                        player.trackSelectionParameters =
+                            player.trackSelectionParameters
+                                .buildUpon()
+                                .setTrackTypeDisabled(
+                                    C.TRACK_TYPE_AUDIO,
+                                    player !is MpvPlayer &&
+                                        transcodeType == PlayMethod.DIRECT_PLAY &&
+                                        audioIndex != null &&
+                                        audioIndex >= 0,
+                                ).build()
 
                         if (subtitleIndex != null) {
                             viewModelScope.launchIO { loadSubtitleDelay() }

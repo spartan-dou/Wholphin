@@ -1,6 +1,7 @@
 package com.github.damontecres.wholphin.services
 
 import android.content.Context
+import android.os.SystemClock
 import androidx.annotation.OptIn
 import androidx.datastore.core.DataStore
 import androidx.media3.common.MediaItem
@@ -20,6 +21,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
@@ -53,15 +55,20 @@ class ThemeSongPlayer
         private val mutex = Mutex()
         private val state = MutableStateFlow(ThemeSongState())
 
-        private val player: Player by lazy {
-            ExoPlayer
-                .Builder(context)
-                .setMediaSourceFactory(
-                    DefaultMediaSourceFactory(
-                        OkHttpDataSource.Factory(authOkHttpClient),
-                    ),
-                ).build()
-        }
+        private var outputClosedAtMs = 0L
+
+        private val lazyPlayer =
+            lazy<Player> {
+                ExoPlayer
+                    .Builder(context)
+                    .setMediaSourceFactory(
+                        DefaultMediaSourceFactory(
+                            OkHttpDataSource.Factory(authOkHttpClient),
+                        ),
+                    ).build()
+            }
+
+        private val player: Player by lazyPlayer
 
         fun playThemeFor(itemId: UUID) {
             scope.launch {
@@ -125,22 +132,48 @@ class ThemeSongPlayer
 
         fun stop() {
             scope.launch {
+                mutex.withLock { stopLocked() }
+            }
+        }
+
+        /**
+         * Stops the theme song and waits until its audio output is closed. On the Shield it stays open
+         * for more than a second after the player is stopped, overlapping the HDMI passthrough output
+         * of a movie started right after.
+         */
+        suspend fun stopAndAwaitOutputClosed() {
+            val closedAtMs =
                 mutex.withLock {
-                    state.value.job?.cancelAndJoin()
-                    withContext(WholphinDispatchers.Main) {
-                        Timber.v("Stopping theme song")
-                        player.stop()
-                    }
-                    state.update {
-                        it.copy(
-                            itemId = null,
-                            job = null,
-                        )
-                    }
+                    stopLocked()
+                    outputClosedAtMs
                 }
+            val remainingMs = closedAtMs - SystemClock.elapsedRealtime()
+            if (remainingMs > 0) {
+                Timber.i("Waiting %d ms for the theme song output to close", remainingMs)
+                delay(remainingMs)
+            }
+        }
+
+        private suspend fun stopLocked() {
+            state.value.job?.cancelAndJoin()
+            withContext(WholphinDispatchers.Main) {
+                Timber.v("Stopping theme song")
+                // Not touching the player when it was never used: it would be created just to be stopped
+                if (lazyPlayer.isInitialized() && player.playbackState != Player.STATE_IDLE) {
+                    outputClosedAtMs = SystemClock.elapsedRealtime() + THEME_OUTPUT_CLOSE_MS
+                    player.stop()
+                }
+            }
+            state.update {
+                it.copy(
+                    itemId = null,
+                    job = null,
+                )
             }
         }
     }
+
+private const val THEME_OUTPUT_CLOSE_MS = 2_000L
 
 data class ThemeSongState(
     val itemId: UUID? = null,
