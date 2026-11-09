@@ -23,7 +23,25 @@ class TestArrImport {
     @Test
     fun `Uses the default port and the external url`() {
         val urls = arrUrlCandidates(ArrType.SONARR, null, null, null, null, "https://sonarr.example.com/", seerrUrl)
-        Assert.assertEquals(listOf("http://192.168.1.10:8989", "https://sonarr.example.com"), urls)
+        Assert.assertEquals(listOf("https://sonarr.example.com", "http://192.168.1.10:8989"), urls)
+    }
+
+    @Test
+    fun `Tries the external url before the internal hostname`() {
+        val urls = arrUrlCandidates(ArrType.RADARR, "radarr", 7878, false, null, "http://192.168.1.20:7878", seerrUrl)
+        Assert.assertEquals(listOf("http://192.168.1.20:7878", "http://radarr:7878", "http://192.168.1.10:7878"), urls)
+    }
+
+    @Test
+    fun `External url without a scheme is usable`() {
+        val urls = arrUrlCandidates(ArrType.RADARR, null, 7878, false, null, "radarr.example.com", seerrUrl)
+        Assert.assertEquals("http://radarr.example.com", urls.first())
+    }
+
+    @Test
+    fun `Blank external url is ignored`() {
+        val urls = arrUrlCandidates(ArrType.RADARR, "radarr", 7878, false, null, " ", seerrUrl)
+        Assert.assertEquals("http://radarr:7878", urls.first())
     }
 
     @Test

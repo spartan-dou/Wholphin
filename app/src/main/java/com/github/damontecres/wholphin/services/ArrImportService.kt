@@ -80,7 +80,13 @@ class ArrImportService
             val results =
                 (radarr + sonarr).mapNotNull { instance ->
                     val apiKey = instance.apiKey?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
-                    val reachableUrl = instance.urls.firstOrNull { isReachable(it, apiKey) }
+                    val failures = mutableListOf<ArrUrlFailure>()
+                    val reachableUrl =
+                        instance.urls.firstOrNull { url ->
+                            val problem = findProblem(url, apiKey)
+                            if (problem != null) failures.add(ArrUrlFailure(url, problem))
+                            problem == null
+                        }
                     val url = reachableUrl ?: instance.urls.firstOrNull() ?: return@mapNotNull null
                     ArrImportResult(
                         ArrServer(
@@ -91,16 +97,20 @@ class ArrImportService
                             apiKey = apiKey,
                         ),
                         reachable = reachableUrl != null,
+                        failures = failures,
                     )
                 }
             arrServerDao.replaceServers(user.rowId, results.map { it.server })
             return results
         }
 
-        private suspend fun isReachable(
+        /**
+         * @return null if [url] answers with this key, otherwise why it doesn't
+         */
+        private suspend fun findProblem(
             url: String,
             apiKey: String,
-        ): Boolean =
+        ): String? =
             withContext(WholphinDispatchers.IO) {
                 val request =
                     Request
@@ -109,13 +119,18 @@ class ArrImportService
                         .header("X-Api-Key", apiKey)
                         .build()
                 try {
-                    // A proxy's login page can answer 200, so also require JSON
                     client.newCall(request).execute().use {
-                        it.isSuccessful && it.body.contentType()?.subtype == "json"
+                        when {
+                            !it.isSuccessful -> "HTTP ${it.code}"
+
+                            // A proxy's login page can answer 200, so also require JSON
+                            it.body.contentType()?.subtype != "json" -> "HTTP ${it.code}, ${it.body.contentType()}"
+
+                            else -> null
+                        }
                     }
                 } catch (ex: IOException) {
-                    Timber.d("Could not reach %s: %s", url, ex.message)
-                    false
+                    ex.message ?: ex.javaClass.simpleName
                 }
             }
     }
@@ -123,6 +138,12 @@ class ArrImportService
 data class ArrImportResult(
     val server: ArrServer,
     val reachable: Boolean,
+    val failures: List<ArrUrlFailure> = emptyList(),
+)
+
+data class ArrUrlFailure(
+    val url: String,
+    val problem: String,
 )
 
 private class ArrInstance(
@@ -133,9 +154,9 @@ private class ArrInstance(
 )
 
 /**
- * The addresses to try for an instance, best first. The hostname stored in Seerr is often only valid
- * from Seerr itself (eg a Docker name), so it falls back to the same port on the Seerr host, then to
- * the external URL.
+ * The addresses to try for an instance, best first. The external URL is meant to be used from other
+ * devices, while the hostname stored in Seerr is often only valid from Seerr itself (eg a Docker
+ * name), so that one falls back to the same port on the Seerr host.
  */
 internal fun arrUrlCandidates(
     type: ArrType,
@@ -164,13 +185,18 @@ internal fun arrUrlCandidates(
         }
     }
 
-    return listOfNotNull(
-        build(hostname),
-        build(seerrUrl.toHttpUrlOrNull()?.host),
+    val external =
         externalUrl
             ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+            ?.let { if ("://" in it) it else "http://$it" }
             ?.toHttpUrlOrNull()
             ?.toString()
-            ?.removeSuffix("/"),
+            ?.removeSuffix("/")
+
+    return listOfNotNull(
+        external,
+        build(hostname),
+        build(seerrUrl.toHttpUrlOrNull()?.host),
     ).distinct()
 }

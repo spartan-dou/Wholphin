@@ -150,6 +150,14 @@ fun ArrImportDialog(
                                     MaterialTheme.colorScheme.error
                                 },
                         )
+                        if (!result.reachable) {
+                            result.failures.forEach {
+                                Text(
+                                    text = "${it.url} : ${it.problem}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                )
+                            }
+                        }
                     }
                 }
             }

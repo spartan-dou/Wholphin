@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -364,6 +365,7 @@ fun AddSeerrServerQuickConnect(
     ) {
         var url by remember { mutableStateOf(initialUrl) }
         val focusRequester = remember { FocusRequester() }
+        val keyboardController = LocalSoftwareKeyboardController.current
         LaunchedEffect(code == null) {
             if (code == null) focusRequester.tryRequestFocus()
         }
@@ -422,7 +424,11 @@ fun AddSeerrServerQuickConnect(
                         ),
                     keyboardActions =
                         KeyboardActions(
-                            onGo = { onStart.invoke(url) },
+                            onGo = {
+                                // Otherwise it stays open on top of the code
+                                keyboardController?.hide()
+                                onStart.invoke(url)
+                            },
                         ),
                     isInputValid = { true },
                     modifier = Modifier.focusRequester(focusRequester),
