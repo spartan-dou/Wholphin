@@ -1,10 +1,12 @@
 package com.github.damontecres.wholphin.ui.playback.overlay
 
+import androidx.annotation.DrawableRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -28,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -205,30 +208,32 @@ fun AudioFormatToast(
 }
 
 /**
- * Small mark of the audio format: a Dolby or DTS badge, or a speaker for the other formats
+ * The logo of an audio format named by [currentAudioChips], null if there isn't one
+ */
+@DrawableRes
+internal fun audioFormatLogo(name: String?): Int? =
+    when {
+        name == null -> null
+        "Atmos" in name -> R.drawable.audio_logo_dolby_atmos
+        name.startsWith("Dolby Digital+") -> R.drawable.audio_logo_dolby_digital_plus
+        name.startsWith("Dolby Digital") -> R.drawable.audio_logo_dolby_digital
+        name.startsWith("Dolby TrueHD") -> R.drawable.audio_logo_dolby_truehd
+        name.startsWith("DTS-HD MA") -> R.drawable.audio_logo_dts_hd_ma
+        name.startsWith("DTS") -> R.drawable.audio_logo_dts
+        else -> null
+    }
+
+/**
+ * Small mark of the audio format: a Dolby or DTS logo, or a speaker for the other formats
  */
 @Composable
 private fun AudioFormatBadge(name: String?) {
-    val badge =
-        when {
-            name == null -> null
-            "Atmos" in name -> Triple("ATMOS", Color.White, Color.Black)
-            name.startsWith("Dolby") -> Triple("DOLBY", Color.White, Color.Black)
-            name.startsWith("DTS") -> Triple("DTS", Color(0xFFE8710A), Color.White)
-            else -> null
-        }
-    if (badge != null) {
-        val (label, background, content) = badge
-        Text(
-            text = label,
-            fontSize = 13.sp,
-            fontWeight = FontWeight.Black,
-            color = content,
-            maxLines = 1,
-            modifier =
-                Modifier
-                    .background(background, RoundedCornerShape(6.dp))
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
+    val logo = audioFormatLogo(name)
+    if (logo != null) {
+        Image(
+            painter = painterResource(logo),
+            contentDescription = name,
+            modifier = Modifier.height(36.dp),
         )
     } else {
         Text(
