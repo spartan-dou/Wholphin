@@ -10,6 +10,7 @@ import com.github.damontecres.wholphin.services.hilt.DefaultCoroutineScope
 import com.github.damontecres.wholphin.ui.components.ScreensaverItem
 import com.github.damontecres.wholphin.ui.formatDate
 import com.github.damontecres.wholphin.ui.launchDefault
+import com.github.damontecres.wholphin.ui.screenSized
 import com.github.damontecres.wholphin.util.ApiRequestPager
 import com.github.damontecres.wholphin.util.ExceptionHandler
 import com.github.damontecres.wholphin.util.GetItemsRequestHandler
@@ -249,6 +250,7 @@ class ScreensaverService
                                             ImageRequest
                                                 .Builder(context)
                                                 .data(backdropUrl)
+                                                .screenSized(context)
                                                 .build(),
                                         ).job
                                         .await()

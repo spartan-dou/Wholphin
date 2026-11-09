@@ -8,7 +8,7 @@ import com.github.damontecres.wholphin.data.model.GetItemsFilter
 import com.github.damontecres.wholphin.data.model.Playlist
 import com.github.damontecres.wholphin.data.model.PlaylistInfo
 import com.github.damontecres.wholphin.data.model.PlaylistItem
-import com.github.damontecres.wholphin.ui.DetailItemFields
+import com.github.damontecres.wholphin.ui.ItemRowFields
 import com.github.damontecres.wholphin.ui.components.baseItemKinds
 import com.github.damontecres.wholphin.ui.data.SortAndDirection
 import com.github.damontecres.wholphin.ui.gt
@@ -22,6 +22,7 @@ import org.jellyfin.sdk.api.client.ApiClient
 import org.jellyfin.sdk.api.client.exception.InvalidStatusException
 import org.jellyfin.sdk.api.client.extensions.playlistsApi
 import org.jellyfin.sdk.api.client.extensions.tvShowsApi
+import org.jellyfin.sdk.api.client.extensions.userLibraryApi
 import org.jellyfin.sdk.api.client.extensions.videosApi
 import org.jellyfin.sdk.model.api.BaseItemDto
 import org.jellyfin.sdk.model.api.BaseItemKind
@@ -65,7 +66,7 @@ class PlaylistCreator
                 GetEpisodesRequest(
                     seriesId = seriesId,
                     seasonId = seasonId,
-                    fields = DetailItemFields,
+                    fields = ItemRowFields,
                     startItemId = episodeId,
                     sortBy = if (shuffled) ItemSortBy.RANDOM else null,
                     limit = Playlist.MAX_SIZE,
@@ -94,7 +95,7 @@ class PlaylistCreator
                     GetItemsRequest(
                         userId = serverRepository.currentUser?.id,
                         parentId = playlistId,
-                        fields = DetailItemFields,
+                        fields = ItemRowFields,
                         startIndex = startIndex,
                         limit = Playlist.MAX_SIZE,
                         sortBy = listOf(sortAndDirection.sort),
@@ -135,7 +136,7 @@ class PlaylistCreator
                             excludeItemIds = listOf(item.id),
                             sortBy = sortAndDirection?.let { listOf(sortAndDirection.sort) },
                             sortOrder = sortAndDirection?.let { listOf(sortAndDirection.direction) },
-                            fields = DetailItemFields,
+                            fields = ItemRowFields,
                             startIndex = startIndex,
                             limit = Playlist.MAX_SIZE,
                             excludeLocationTypes = listOf(LocationType.VIRTUAL),
@@ -208,7 +209,7 @@ class PlaylistCreator
                                     seasonId = item.id,
                                     limit = Playlist.MAX_SIZE,
                                     sortBy = ItemSortBy.RANDOM,
-                                    fields = DetailItemFields,
+                                    fields = ItemRowFields,
                                 ).content.items
                                 .convertAndAddParts()
                                 .let {
@@ -236,7 +237,7 @@ class PlaylistCreator
                                 seriesId = item.id,
                                 limit = Playlist.MAX_SIZE,
                                 sortBy = ItemSortBy.RANDOM,
-                                fields = DetailItemFields,
+                                fields = ItemRowFields,
                             ).content.items
                             .convertAndAddParts()
                             .let {
@@ -327,7 +328,7 @@ class PlaylistCreator
                 this@convertAndAddParts
                     .filter { it.locationType != LocationType.VIRTUAL }
                     .forEach { ep ->
-                        add(PlaylistItem.Media(BaseItem(ep, useSeriesForPrimary)))
+                        add(PlaylistItem.Media(BaseItem(ep, useSeriesForPrimary), partial = true))
                         if (ep.partCount.gt(1)) {
                             val parts =
                                 api.videosApi.getAdditionalPart(ep.id).content.items.map { part ->
@@ -420,6 +421,16 @@ class PlaylistCreator
                 listOf(itemId.toServerString()),
             )
         }
+    }
+
+/**
+ * Fetches what a [PlaylistItem.Media.partial] item lacks, for when it is about to be played
+ */
+suspend fun PlaylistItem.withPlaybackDetails(api: ApiClient): PlaylistItem =
+    if (this is PlaylistItem.Media && partial) {
+        PlaylistItem.Media(item.copy(data = api.userLibraryApi.getItem(id).content))
+    } else {
+        this
     }
 
 sealed interface PlaylistCreationResult {

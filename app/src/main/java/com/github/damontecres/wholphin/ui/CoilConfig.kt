@@ -1,5 +1,6 @@
 package com.github.damontecres.wholphin.ui
 
+import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import coil3.ImageLoader
@@ -14,6 +15,8 @@ import coil3.network.NetworkRequest
 import coil3.network.NetworkResponse
 import coil3.network.cachecontrol.CacheControlCacheStrategy
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
+import coil3.request.CachePolicy
+import coil3.request.ImageRequest
 import coil3.request.Options
 import coil3.request.crossfade
 import coil3.util.DebugLogger
@@ -107,6 +110,17 @@ fun CoilConfig(
             }.build()
     }
 }
+
+/**
+ * For a prefetch where only the file is wanted: it goes in the disk cache and almost nothing is decoded
+ */
+fun ImageRequest.Builder.diskCacheOnly(): ImageRequest.Builder = size(1, 1).memoryCachePolicy(CachePolicy.DISABLED)
+
+/**
+ * Decode no larger than the screen. A request without a target otherwise decodes at the original size
+ */
+fun ImageRequest.Builder.screenSized(context: Context): ImageRequest.Builder =
+    context.resources.displayMetrics.let { size(it.widthPixels, it.heightPixels) }
 
 /**
  * This [CacheStrategy] always prefers the cached response for Trickplay images,

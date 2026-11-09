@@ -29,8 +29,13 @@ sealed interface PlaylistItem {
     val id: UUID
     val item: BaseItem
 
+    /**
+     * @param partial true when the item lacks what playback needs (media sources, chapters, trickplay),
+     * which keeps a long queue small in memory during playback
+     */
     data class Media(
         override val item: BaseItem,
+        val partial: Boolean = false,
     ) : PlaylistItem {
         override val id: UUID
             get() = item.id

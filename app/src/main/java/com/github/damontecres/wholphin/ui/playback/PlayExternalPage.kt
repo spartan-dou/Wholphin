@@ -32,6 +32,7 @@ import com.github.damontecres.wholphin.services.PlaylistCreationResult
 import com.github.damontecres.wholphin.services.PlaylistCreator
 import com.github.damontecres.wholphin.services.StreamChoiceService
 import com.github.damontecres.wholphin.services.UserPreferencesService
+import com.github.damontecres.wholphin.services.withPlaybackDetails
 import com.github.damontecres.wholphin.ui.components.ErrorMessage
 import com.github.damontecres.wholphin.ui.components.LoadingPage
 import com.github.damontecres.wholphin.ui.findActivity
@@ -136,7 +137,7 @@ class PlayExternalViewModel
                                         navigationManager.goBack()
                                         return@launchDefault
                                     }
-                                    r.playlist.items.first()
+                                    r.playlist.items.first().withPlaybackDetails(api)
                                 }
                             }
                         } else {

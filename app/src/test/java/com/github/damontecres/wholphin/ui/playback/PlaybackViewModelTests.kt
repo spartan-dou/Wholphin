@@ -422,6 +422,43 @@ class PlaybackViewModelTests {
     }
 
     @Test
+    fun `A partial queue item is only fetched in full when it is played`() =
+        runTest(testDispatcher) {
+            val queue =
+                Playlist(
+                    listOf(
+                        PlaylistItem.Media(BaseItem(movie), partial = true),
+                        PlaylistItem.Media(BaseItem(movie2), partial = true),
+                    ),
+                )
+            coEvery { mockUserLibraryApi.getItem(playlist.id, any()) } returns
+                successResponse(playlist)
+            coEvery { mockUserLibraryApi.getItem(movie.id, any()) } returns successResponse(movie)
+            coEvery { mockUserLibraryApi.getItem(movie2.id, any()) } returns successResponse(movie2)
+            coEvery {
+                mockPlaylistCreator.createFrom(
+                    item = playlist,
+                    startIndex = any(),
+                    sortAndDirection = any(),
+                    shuffled = any(),
+                    recursive = any(),
+                    filter = any(),
+                )
+            } returns PlaylistCreationResult.Success(queue)
+
+            val viewModel = createViewModel(Destination.PlaybackList(playlist.id))
+
+            coVerify(exactly = 1) { mockUserLibraryApi.getItem(movie.id, any()) }
+            coVerify(exactly = 0) { mockUserLibraryApi.getItem(movie2.id, any()) }
+            Assert.assertEquals(queue.items, viewModel.state.value.playlist.items)
+
+            viewModel.playNextUp()
+            testScheduler.advanceUntilIdle()
+
+            coVerify(exactly = 1) { mockUserLibraryApi.getItem(movie2.id, any()) }
+        }
+
+    @Test
     fun `Play next up`() =
         runTest(testDispatcher) {
             setupForPlaylist()

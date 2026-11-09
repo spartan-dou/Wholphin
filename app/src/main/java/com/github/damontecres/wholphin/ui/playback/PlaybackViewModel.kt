@@ -27,7 +27,6 @@ import androidx.media3.exoplayer.analytics.AnalyticsListener
 import androidx.media3.session.MediaSession
 import coil3.imageLoader
 import coil3.request.ImageRequest
-import coil3.size.Size
 import com.github.damontecres.wholphin.data.ItemPlaybackDao
 import com.github.damontecres.wholphin.data.ItemPlaybackRepository
 import com.github.damontecres.wholphin.data.ServerRepository
@@ -57,6 +56,8 @@ import com.github.damontecres.wholphin.services.ScreensaverService
 import com.github.damontecres.wholphin.services.StreamChoiceService
 import com.github.damontecres.wholphin.services.ThemeSongPlayer
 import com.github.damontecres.wholphin.services.UserPreferencesService
+import com.github.damontecres.wholphin.services.withPlaybackDetails
+import com.github.damontecres.wholphin.ui.diskCacheOnly
 import com.github.damontecres.wholphin.ui.formatBitrate
 import com.github.damontecres.wholphin.ui.gt
 import com.github.damontecres.wholphin.ui.isNotNullOrBlank
@@ -451,17 +452,18 @@ class PlaybackViewModel
         /**
          * Play an item
          *
-         * @param currentItem the item to play
+         * @param queuedItem the item to play
          * @param positionMs the starting playback position in milliseconds
          * @param itemPlayback the parameters for playback such chosen subtitle or audio streams
          * @param forceTranscoding whether the user has requested to force playback via transcoding
          */
         private suspend fun play(
-            playlistItem: PlaylistItem,
+            queuedItem: PlaylistItem,
             positionMs: Long,
             forceTranscoding: Boolean = this.forceTranscoding,
         ): Boolean =
             withContext(WholphinDispatchers.IO) {
+                val playlistItem = queuedItem.withPlaybackDetails(api)
                 val item =
                     when (playlistItem) {
                         is PlaylistItem.Intro -> playlistItem.item
@@ -1111,7 +1113,8 @@ class PlaybackViewModel
                     ImageRequest
                         .Builder(context)
                         .data(url)
-                        .size(Size.ORIGINAL)
+                        // A decoded sheet takes about 23MB, only the one being sought in is needed in memory
+                        .diskCacheOnly()
                         .build(),
                 )
             }

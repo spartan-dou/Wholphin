@@ -8,7 +8,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.media3.common.Player
 import coil3.imageLoader
 import coil3.request.ImageRequest
-import coil3.size.Size
 import com.github.damontecres.wholphin.data.ChosenStreams
 import com.github.damontecres.wholphin.data.PlaybackEffectDao
 import com.github.damontecres.wholphin.data.ServerRepository
@@ -27,6 +26,7 @@ import com.github.damontecres.wholphin.ui.PhotoItemFields
 import com.github.damontecres.wholphin.ui.launchIO
 import com.github.damontecres.wholphin.ui.nav.Destination
 import com.github.damontecres.wholphin.ui.onMain
+import com.github.damontecres.wholphin.ui.screenSized
 import com.github.damontecres.wholphin.ui.showToast
 import com.github.damontecres.wholphin.util.ApiRequestPager
 import com.github.damontecres.wholphin.util.ExceptionHandler
@@ -323,7 +323,8 @@ class SlideshowViewModel
                                         ImageRequest
                                             .Builder(context)
                                             .data(url)
-                                            .size(Size.ORIGINAL)
+                                            // The original is only loaded when zooming in
+                                            .screenSized(context)
                                             .build()
                                     context.imageLoader.enqueue(request)
                                     Timber.v(

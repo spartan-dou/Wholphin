@@ -10,6 +10,7 @@ import androidx.datastore.core.DataStore
 import androidx.palette.graphics.Palette
 import coil3.asDrawable
 import coil3.imageLoader
+import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.SuccessResult
 import coil3.request.allowHardware
@@ -31,6 +32,8 @@ import org.jellyfin.sdk.model.api.ImageType
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
+
+private const val PALETTE_IMAGE_SIZE = 128
 
 /**
  * Stores state for the backdrop of the app shown on non-full screen pages
@@ -102,6 +105,8 @@ class BackdropService
             imageUrl: String?,
         ) {
             delay(500)
+            // The focus moved on during the delay, decoding this image would only waste memory
+            if (_backdropFlow.value.itemId != itemId) return
             val backdropStyle =
                 preferences.data
                     .firstOrNull()
@@ -148,6 +153,10 @@ class BackdropService
                             .data(imageUrl)
                             .allowHardware(false)
                             .bitmapConfig(Bitmap.Config.ARGB_8888)
+                            // Palette only needs a small image: at the original size, one 4K backdrop
+                            // would take most of the image memory cache
+                            .size(PALETTE_IMAGE_SIZE)
+                            .memoryCachePolicy(CachePolicy.DISABLED)
                             .build()
 
                     val result = loader.execute(request)
