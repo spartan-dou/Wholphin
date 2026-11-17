@@ -202,8 +202,8 @@ configure<ApplicationExtension> {
             isEnable = !isBuildingBundle.get()
 
             reset()
-            // The Shield runs a 32-bit userland
-            include("armeabi-v7a")
+            // The Shield runs a 32-bit userland; tablets and phones get the 64-bit one
+            include("armeabi-v7a", "arm64-v8a")
             isUniversalApk = false
         }
     }

@@ -43,17 +43,21 @@ jobs:
           ORG_GRADLE_PROJECT_WholphinExtensionsUsername: "${{ github.actor }}"
           ORG_GRADLE_PROJECT_WholphinExtensionsPassword: "${{ secrets.GITHUB_TOKEN }}"
         run: ./gradlew assembleDefaultRelease --build-cache --parallel
-      - name: Name the APK like the in-app updater expects
+      - name: Name the APKs like the in-app updater expects
+        # It picks Wholphin-<first supported ABI>.apk: armeabi-v7a on the Shield, arm64-v8a on a tablet
         run: |
-          APK=$(find app/build/outputs/apk/default/release -name '*armeabi-v7a.apk' | head -1)
-          echo "Using $APK"
-          cp "$APK" Wholphin-armeabi-v7a.apk
-          sha256sum Wholphin-armeabi-v7a.apk
+          for ABI in armeabi-v7a arm64-v8a; do
+            APK=$(find app/build/outputs/apk/default/release -name "*-${ABI}.apk" | head -1)
+            test -n "$APK" || { echo "No $ABI APK"; exit 1; }
+            echo "Using $APK"
+            cp "$APK" "Wholphin-${ABI}.apk"
+          done
+          sha256sum Wholphin-*.apk
       - name: Publish release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release create "shield-${GITHUB_RUN_NUMBER}" \
             --target "${GITHUB_SHA}" --latest --title "${VERSION_NAME}" \
-            -n "Shield build of ${GITHUB_SHA}" \
-            Wholphin-armeabi-v7a.apk
+            -n "Shield (armeabi-v7a) and tablet (arm64-v8a) build of ${GITHUB_SHA}" \
+            Wholphin-armeabi-v7a.apk Wholphin-arm64-v8a.apk
