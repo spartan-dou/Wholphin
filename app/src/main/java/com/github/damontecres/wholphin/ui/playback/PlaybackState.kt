@@ -22,6 +22,8 @@ data class PlaybackState(
     val analyticsState: AnalyticsState = AnalyticsState(),
     val subtitleCues: List<Cue> = emptyList(),
     val nextUp: BaseItem? = null,
+    /** The series of [nextUp] when it is an episode, so it can be shown without spoiling the episode */
+    val nextUpSeries: BaseItem? = null,
     val playlistIndex: Int = 0,
     val playlist: Playlist = Playlist(emptyList()),
     val maxBitrate: Long = -1L,

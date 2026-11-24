@@ -1165,7 +1165,7 @@ class PlaybackViewModel
 
                                 prefs.showNextUpWhen != ShowNextUpWhen.NEXT_UP_NEVER -> {
                                     Timber.v("Setting next up to ${nextItem.id}")
-                                    _state.update { it.copy(nextUp = nextItem.item) }
+                                    showNextUp(nextItem.item)
                                 }
 
                                 else -> {
@@ -1243,7 +1243,7 @@ class PlaybackViewModel
                                     val nextItem = state.nextItem()
                                     if (nextItem is PlaylistItem.Media) {
                                         Timber.v("Setting next up during outro to ${nextItem?.id}")
-                                        _state.update { it.copy(nextUp = nextItem.item) }
+                                        showNextUp(nextItem.item)
                                     }
                                 } else {
                                     val behavior =
@@ -1404,6 +1404,30 @@ class PlaybackViewModel
                         return@launchDefault
                     }
                 }
+            }
+        }
+
+        /** The last series loaded by [showNextUp], since the next episodes are usually all from the same one */
+        @Volatile
+        private var nextUpSeriesCache: BaseItem? = null
+
+        /**
+         * Show [item] as the next up. For an episode, its series is loaded too, so the UI can show
+         * the series' image and overview instead of the episode's, which could spoil it
+         */
+        private fun showNextUp(item: BaseItem) {
+            _state.update { it.copy(nextUp = item) }
+            val seriesId = item.data.seriesId
+            if (item.type != BaseItemKind.EPISODE || seriesId == null) return
+            val cached = nextUpSeriesCache
+            if (cached?.id == seriesId) {
+                _state.update { it.copy(nextUpSeries = cached) }
+                return
+            }
+            viewModelScope.launchIO {
+                val series = BaseItem(api.userLibraryApi.getItem(seriesId).content, false)
+                nextUpSeriesCache = series
+                _state.update { it.copy(nextUpSeries = series) }
             }
         }
 

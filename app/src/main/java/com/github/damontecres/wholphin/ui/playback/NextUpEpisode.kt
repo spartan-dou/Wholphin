@@ -46,6 +46,8 @@ import coil3.compose.AsyncImage
 import coil3.compose.AsyncImagePreviewHandler
 import coil3.compose.LocalAsyncImagePreviewHandler
 import com.github.damontecres.wholphin.R
+import com.github.damontecres.wholphin.data.model.BaseItem
+import com.github.damontecres.wholphin.services.ImageUrlService
 import com.github.damontecres.wholphin.ui.AppColors
 import com.github.damontecres.wholphin.ui.AspectRatios
 import com.github.damontecres.wholphin.ui.PreviewTvSpec
@@ -56,6 +58,8 @@ import com.github.damontecres.wholphin.ui.theme.WholphinTheme
 import com.github.damontecres.wholphin.ui.tryRequestFocus
 import com.github.damontecres.wholphin.ui.util.Clock
 import com.github.damontecres.wholphin.ui.util.LocalClock
+import org.jellyfin.sdk.model.UUID
+import org.jellyfin.sdk.model.api.ImageType
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
@@ -166,6 +170,56 @@ fun NextUpEpisode(
             }
         }
     }
+}
+
+/**
+ * An image of [episode]'s series, never one of the episode itself, so the next up does not spoil it.
+ * A wide image (thumb, then backdrop) is preferred, then the series' poster.
+ *
+ * @param series the episode's series once it is loaded, for when the episode has no inherited series images
+ * @return the image URL and its aspect ratio, or null if the series has no image
+ */
+fun seriesImageForEpisode(
+    imageUrlService: ImageUrlService,
+    episode: BaseItem,
+    series: BaseItem?,
+): Pair<String, Float>? {
+    fun image(
+        itemId: UUID,
+        imageType: ImageType,
+        tag: String?,
+        aspectRatio: Float,
+    ): Pair<String, Float>? =
+        imageUrlService
+            .getItemImageUrl(itemId = itemId, imageType = imageType, tag = tag)
+            ?.let { url -> url to aspectRatio }
+
+    val data = episode.data
+    data.parentThumbItemId?.let { id ->
+        image(id, ImageType.THUMB, data.parentThumbImageTag, AspectRatios.WIDE)?.let { return it }
+    }
+    data.parentBackdropItemId?.let { id ->
+        val tag = data.parentBackdropImageTags?.firstOrNull()
+        image(id, ImageType.BACKDROP, tag, AspectRatios.WIDE)?.let { return it }
+    }
+    if (series != null) {
+        val tags = series.data.imageTags.orEmpty()
+        tags[ImageType.THUMB]?.let { tag ->
+            image(series.id, ImageType.THUMB, tag, AspectRatios.WIDE)?.let { return it }
+        }
+        series.data.backdropImageTags?.firstOrNull()?.let { tag ->
+            image(series.id, ImageType.BACKDROP, tag, AspectRatios.WIDE)?.let { return it }
+        }
+        tags[ImageType.PRIMARY]?.let { tag ->
+            image(series.id, ImageType.PRIMARY, tag, series.aspectRatio ?: AspectRatios.TALL)?.let { return it }
+        }
+    }
+    val seriesId = data.seriesId
+    val seriesPrimaryTag = data.seriesPrimaryImageTag
+    if (seriesId != null && seriesPrimaryTag != null) {
+        return image(seriesId, ImageType.PRIMARY, seriesPrimaryTag, AspectRatios.TALL)
+    }
+    return null
 }
 
 @Composable

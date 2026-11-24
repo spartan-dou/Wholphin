@@ -100,6 +100,8 @@ import com.github.damontecres.wholphin.util.Media3SubtitleOverride
 import io.github.peerless2012.ass.media.widget.AssSubtitleView
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import org.jellyfin.sdk.model.api.BaseItemKind
+import org.jellyfin.sdk.model.api.ImageType
 import org.jellyfin.sdk.model.extensions.ticks
 import timber.log.Timber
 import kotlin.time.Duration
@@ -678,15 +680,29 @@ fun PlaybackPageContent(
                         }
                     }
                 }
+                // For an episode, show its series' image and overview rather than the episode's, to avoid spoilers
+                val isEpisode = it.type == BaseItemKind.EPISODE && it.data.seriesId != null
+                val series = state.nextUpSeries?.takeIf { loaded -> loaded.id == it.data.seriesId }
+                val imageUrlService = LocalImageUrlService.current
+                val image =
+                    remember(it, series) {
+                        if (isEpisode) {
+                            seriesImageForEpisode(imageUrlService, it, series)
+                        } else {
+                            imageUrlService
+                                .getItemImageUrl(it, ImageType.PRIMARY)
+                                ?.let { url -> url to (it.aspectRatio ?: AspectRatios.WIDE) }
+                        }
+                    }
                 NextUpEpisode(
                     title =
                         listOfNotNull(
                             it.data.seasonEpisode,
                             it.name,
                         ).joinToString(" - "),
-                    description = it.data.overview,
-                    imageUrl = LocalImageUrlService.current.rememberImageUrl(it),
-                    aspectRatio = it.aspectRatio ?: AspectRatios.WIDE,
+                    description = if (isEpisode) series?.data?.overview else it.data.overview,
+                    imageUrl = image?.first,
+                    aspectRatio = image?.second ?: AspectRatios.WIDE,
                     onClick = {
                         viewModel.reportInteraction()
                         controllerViewState.hideControls()
